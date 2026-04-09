@@ -1,53 +1,55 @@
-/* Hierarchy and Grouping Styles */
+/* General Visuals */
 .test-row {
     display: flex;
     justify-content: space-between;
+    padding: 12px 20px;
+    background: white;
+    margin-bottom: 4px;
+    border-radius: 6px;
     align-items: center;
-    padding: 10px 15px;
-    border-bottom: 1px solid var(--border);
-    transition: background 0.2s;
+    border-left: 4px solid transparent;
 }
 
-.row-header {
-    background-color: #f8f9fa;
+.is-header {
+    background: #f0f2f5;
     font-weight: bold;
-    color: var(--primary);
-    border-left: 4px solid var(--primary);
+    color: #0052cc;
+    border-left-color: #0052cc;
+    margin-top: 15px;
 }
 
-.test-controls {
+/* Indentation without dashes */
+.level-1 { margin-left: 30px; border-left-color: #dfe1e6; }
+.level-2 { margin-left: 60px; font-size: 0.95em; border-left-color: #ebecf0; }
+.level-3 { margin-left: 90px; font-size: 0.9em; color: #6b778c; }
+
+/* Editor Specifics */
+.editor-item-row {
     display: flex;
-    gap: 8px;
+    gap: 10px;
+    margin-bottom: 8px;
     align-items: center;
 }
 
-.test-controls.hidden {
-    display: none;
+.btn-icon {
+    background: #ebecf0;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-/* Indentation levels */
-.depth-1 { padding-left: 35px; border-left: 1px solid #ddd; }
-.depth-2 { padding-left: 55px; border-left: 1px solid #eee; font-style: italic; }
-.depth-3 { padding-left: 75px; color: #666; font-size: 0.9rem; }
+.btn-icon:hover { background: #dfe1e6; }
+.btn-icon.danger { color: #ff5630; }
 
-/* Status Button Compactness */
 .status-btn {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    border: 1px solid #dfe1e6;
+    background: white;
+    padding: 5px 12px;
+    border-radius: 4px;
 }
 
-.test-row input[type="text"] {
-    width: 150px;
-    margin-bottom: 0;
-    font-size: 0.8rem;
-}
+.status-btn.p.active { background: #36b37e; color: white; border-color: #36b37e; }
+.status-btn.f.active { background: #ff5630; color: white; border-color: #ff5630; }
 
-.suite-card-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+.hidden { display: none; }
