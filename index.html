@@ -4,60 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QA Regression Hub</title>
-    <style>
-        :root {
-            --primary: #0052cc;
-            --primary-hover: #003d99;
-            --bg-color: #f4f5f7;
-            --nav-bg: #172b4d;
-            --text-main: #172b4d;
-            --text-muted: #6b778c;
-            --pass-bg: #e3fcef; --pass-border: #36b37e; --pass-text: #006644;
-            --fail-bg: #ffebe6; --fail-border: #ff5630; --fail-text: #bf2600;
-            --skip-bg: #eae6ff; --skip-border: #6554c0; --skip-text: #403294;
-            --card-bg: #ffffff;
-            --border: #dfe1e6;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-main); }
-        
-        nav { width: 250px; background-color: var(--nav-bg); color: white; display: flex; flex-direction: column; }
-        .nav-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .nav-items { flex-grow: 1; padding: 20px 0; }
-        .nav-item { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s; opacity: 0.8; }
-        .nav-item:hover, .nav-item.active { background-color: rgba(255,255,255,0.1); opacity: 1; }
-        .nav-item.active { border-left: 4px solid var(--primary); }
-
-        main { flex-grow: 1; padding: 30px; overflow-y: auto; }
-        .view { display: none; max-width: 1000px; margin: 0 auto; }
-        .view.active { display: block; }
-        
-        h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; border: 1px solid var(--border); }
-        
-        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; white-space: nowrap; }
-        .btn-primary { background-color: var(--primary); color: white; }
-        .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
-        .btn-danger { background-color: transparent; border: 1px solid var(--fail-border); color: var(--fail-text); }
-        
-        .suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
-        .suite-select-card { background: white; border: 2px solid var(--border); padding: 25px; border-radius: 8px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
-        .suite-select-card:hover { border-color: var(--primary); transform: translateY(-3px); }
-
-        .test-row { display: flex; flex-direction: column; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border); }
-        .test-controls { display: flex; gap: 10px; flex-wrap: wrap; }
-        .status-btn { background-color: var(--bg-color); color: var(--text-muted); border: 1px solid var(--border); }
-        .status-btn[data-status="Pass"].active { background-color: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
-        .status-btn[data-status="Fail"].active { background-color: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
-        .status-btn[data-status="Skip"].active { background-color: var(--skip-bg); border-color: var(--skip-border); color: var(--skip-text); }
-        
-        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; }
-        #jira-output { font-family: monospace; height: 150px; background: #f8f9fa; display: none; margin-top: 20px;}
-        
-        .hidden { display: none !important; }
-        .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -101,8 +48,8 @@
             <div class="card" id="suite-editor" style="display: none;">
                 <h3 id="editor-title" style="margin-bottom: 15px;">Suite Editor</h3>
                 <input type="hidden" id="edit-suite-id">
-                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Billing Checkout)">
-                <textarea id="edit-suite-tests" style="height: 250px;" placeholder="Enter tests here, one per line..."></textarea>
+                <input type="text" id="edit-suite-name" placeholder="Suite Name">
+                <textarea id="edit-suite-tests" style="height: 250px;" placeholder="Enter tests here..."></textarea>
                 <div style="display: flex; gap: 10px;">
                     <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
                     <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
@@ -119,261 +66,16 @@
             <h2>Settings & Global Backup</h2>
             <div class="card">
                 <h3>Export All Data</h3>
-                <p style="margin-bottom: 15px; color: var(--text-muted);">Downloads all suites and your entire run history into one file.</p>
                 <button class="btn-primary" onclick="exportData()">Download Global Backup (.json)</button>
             </div>
             <div class="card">
                 <h3>Import Global Backup</h3>
-                <p style="margin-bottom: 15px; color: var(--text-muted);">Warning: This will replace all current data.</p>
                 <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
                 <button class="btn-outline" onclick="document.getElementById('import-file').click()">Restore from File</button>
             </div>
         </div>
     </main>
 
-    <script>
-        // Initialize from LocalStorage or empty arrays
-        let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
-        let history = JSON.parse(localStorage.getItem('qa_history')) || [];
-        let currentRunState = [];
-        let activeSuiteId = null;
-
-        function saveData() {
-            localStorage.setItem('qa_suites', JSON.stringify(suites));
-            localStorage.setItem('qa_history', JSON.stringify(history));
-        }
-
-        function switchView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(`view-${viewId}`).classList.add('active');
-            if (window.event) event.currentTarget.classList.add('active');
-            
-            if (viewId === 'run') showPicker();
-            if (viewId === 'suites') renderSuites();
-            if (viewId === 'history') renderHistory();
-        }
-
-        // --- RUNNER LOGIC ---
-        function showPicker() {
-            document.getElementById('suite-picker-section').classList.remove('hidden');
-            document.getElementById('active-test-section').classList.add('hidden');
-            const grid = document.getElementById('run-suite-grid');
-            const emptyMsg = document.getElementById('run-empty-msg');
-            
-            if (suites.length === 0) {
-                grid.innerHTML = "";
-                emptyMsg.classList.remove('hidden');
-            } else {
-                emptyMsg.classList.add('hidden');
-                grid.innerHTML = suites.map(s => `
-                    <div class="suite-select-card" onclick="startRun('${s.id}')">
-                        <h3 style="color: var(--primary); margin-bottom: 5px;">${s.name}</h3>
-                        <p style="color: var(--text-muted); font-size: 0.9rem;">${s.tests.length} Cases</p>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function startRun(id) {
-            activeSuiteId = id;
-            const suite = suites.find(s => s.id === id);
-            document.getElementById('active-suite-name').innerText = suite.name;
-            currentRunState = suite.tests.map(t => ({ name: t, status: 'Pending', notes: '' }));
-            document.getElementById('suite-picker-section').classList.add('hidden');
-            document.getElementById('active-test-section').classList.remove('hidden');
-            document.getElementById('jira-output').style.display = 'none';
-            renderTestRun();
-        }
-
-        function renderTestRun() {
-            const container = document.getElementById('test-container');
-            container.innerHTML = currentRunState.map((test, index) => `
-                <div class="test-row">
-                    <div style="font-weight: 600; font-size: 1.05rem;">${test.name}</div>
-                    <div class="test-controls">
-                        <button class="status-btn ${test.status === 'Pass' ? 'active' : ''}" data-status="Pass" onclick="updateStatus(${index}, 'Pass')">Pass</button>
-                        <button class="status-btn ${test.status === 'Fail' ? 'active' : ''}" data-status="Fail" onclick="updateStatus(${index}, 'Fail')">Fail</button>
-                        <button class="status-btn ${test.status === 'Skip' ? 'active' : ''}" data-status="Skip" onclick="updateStatus(${index}, 'Skip')">Skip</button>
-                        <input type="text" placeholder="Add Note / JIRA Key..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom:0; flex-grow:1; min-width: 180px;">
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function updateStatus(i, s) { currentRunState[i].status = s; renderTestRun(); }
-        function updateNotes(i, n) { currentRunState[i].notes = n; }
-
-        function generateReport() {
-            const suite = suites.find(s => s.id === activeSuiteId);
-            const fails = currentRunState.filter(s => s.status === 'Fail');
-            const passes = currentRunState.filter(s => s.status === 'Pass');
-            const skips = currentRunState.filter(s => s.status === 'Skip');
-
-            let report = `h2. Regression Run: ${suite.name}\n\n`;
-            if (fails.length) {
-                report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6|borderColor=#ff5630}\n" + fails.map(f => `* *${f.name}*: ${f.notes || 'No notes'}`).join('\n') + "\n{panel}\n\n";
-            }
-            report += "{panel:title=✅ Passes|titleBGColor=#e3fcef|borderColor=#36b37e}\n" + passes.map(p => `* ${p.name} ${p.notes ? `(${p.notes})` : ''}`).join('\n') + "\n{panel}";
-
-            const out = document.getElementById('jira-output');
-            out.style.display = 'block'; out.value = report; out.select();
-            document.execCommand('copy');
-            
-            history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report: report });
-            saveData();
-            alert("Report copied to clipboard and saved to History!");
-        }
-
-        // --- SUITE MANAGEMENT ---
-        function renderSuites() {
-            const list = document.getElementById('suite-list');
-            if (suites.length === 0) {
-                list.innerHTML = `<div class="empty-state">No suites created yet. Use the buttons above to get started.</div>`;
-                return;
-            }
-            list.innerHTML = suites.map(s => `
-                <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
-                    <div>
-                        <strong>${s.name}</strong> <br>
-                        <small style="color: var(--text-muted)">${s.tests.length} tests</small>
-                    </div>
-                    <div style="display:flex; gap:8px;">
-                        <button class="btn-outline" onclick="editSuite('${s.id}')">Edit</button>
-                        <button class="btn-outline" onclick="exportSingleSuite('${s.id}')">📤 Export</button>
-                        <button class="btn-danger" onclick="deleteSuite('${s.id}')">Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function showSuiteEditor() { 
-            document.getElementById('suite-editor').style.display = 'block'; 
-            document.getElementById('edit-suite-id').value = '';
-            document.getElementById('edit-suite-name').value = '';
-            document.getElementById('edit-suite-tests').value = '';
-            document.getElementById('editor-title').innerText = "Create New Suite";
-        }
-        function hideSuiteEditor() { document.getElementById('suite-editor').style.display = 'none'; }
-
-        function saveSuite() {
-            const id = document.getElementById('edit-suite-id').value || Date.now().toString();
-            const name = document.getElementById('edit-suite-name').value.trim();
-            const tests = document.getElementById('edit-suite-tests').value.split('\n').filter(t => t.trim());
-            
-            if (!name) return alert("Please enter a suite name.");
-            if (tests.length === 0) return alert("Please enter at least one test case.");
-
-            const idx = suites.findIndex(s => s.id === id);
-            if (idx > -1) suites[idx] = { id, name, tests };
-            else suites.push({ id, name, tests });
-            
-            saveData(); hideSuiteEditor(); renderSuites();
-        }
-
-        function editSuite(id) {
-            const s = suites.find(x => x.id === id);
-            document.getElementById('edit-suite-id').value = s.id;
-            document.getElementById('edit-suite-name').value = s.name;
-            document.getElementById('edit-suite-tests').value = s.tests.join('\n');
-            document.getElementById('editor-title').innerText = "Edit Suite";
-            showSuiteEditor();
-        }
-
-        function deleteSuite(id) { if(confirm("Permanently delete this suite?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
-
-        function exportSingleSuite(id) {
-            const suite = suites.find(s => s.id === id);
-            const data = { type: 'single_suite', suite };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `suite_${suite.name.replace(/\s+/g, '_')}.json`;
-            a.click();
-        }
-
-        function importSingleSuite(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (imported.type === 'single_suite' && imported.suite) {
-                        let newSuite = imported.suite;
-                        newSuite.id = Date.now().toString();
-                        if (suites.some(s => s.name === newSuite.name)) newSuite.name += " (Imported)";
-                        suites.push(newSuite);
-                        saveData(); renderSuites();
-                    } else { alert("Invalid suite file."); }
-                } catch (err) { alert("Error reading file."); }
-                event.target.value = '';
-            };
-            reader.readAsText(file);
-        }
-
-        // --- HISTORY LOGIC ---
-        function renderHistory() {
-            const list = document.getElementById('history-list');
-            if (history.length === 0) {
-                list.innerHTML = `<div class="empty-state">No history recorded yet.</div>`;
-                return;
-            }
-            list.innerHTML = history.map(h => `
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
-                        <strong>${h.date} - ${h.suiteName}</strong>
-                        <button class="btn-danger" style="padding:4px 8px; font-size: 0.8rem;" onclick="deleteHistory(${h.id})">Delete</button>
-                    </div>
-                    <textarea readonly style="height:80px; font-size:0.8rem; background:#fafafa; border: 1px solid #eee;">${h.report}</textarea>
-                    <button class="btn-outline" style="margin-top:5px; font-size:0.8rem" onclick="copyFromHistory(this)">Copy Report</button>
-                </div>
-            `).join('');
-        }
-
-        function deleteHistory(id) { if(confirm("Delete this history record?")) { history = history.filter(h => h.id !== id); saveData(); renderHistory(); } }
-        
-        function copyFromHistory(btn) {
-            const txt = btn.previousElementSibling;
-            txt.select();
-            document.execCommand('copy');
-            btn.innerText = "✅ Copied!";
-            setTimeout(() => btn.innerText = "Copy Report", 2000);
-        }
-
-        // --- GLOBAL SETTINGS LOGIC ---
-        function exportData() {
-            const data = { type: 'global_backup', suites, history };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `qa_hub_full_backup_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (imported.type === 'global_backup') {
-                        if (confirm("This will replace all current suites and history. Continue?")) {
-                            suites = imported.suites || [];
-                            history = imported.history || [];
-                            saveData(); location.reload();
-                        }
-                    } else { alert("Invalid global backup file."); }
-                } catch (err) { alert("Error reading file."); }
-            };
-            reader.readAsText(file);
-        }
-
-        // Initialize view
-        showPicker();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
