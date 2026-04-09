@@ -39,14 +39,12 @@
         button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn-primary { background-color: var(--primary); color: white; }
         .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-danger { background-color: transparent; border: 1px solid var(--fail-border); color: var(--fail-text); }
         
-        /* Suite Selection Grid */
         .suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .suite-select-card { background: white; border: 2px solid var(--border); padding: 25px; border-radius: 8px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
         .suite-select-card:hover { border-color: var(--primary); transform: translateY(-3px); }
-        .suite-select-card h3 { color: var(--primary); margin-bottom: 5px; }
 
-        /* Runner Styles */
         .test-row { display: flex; flex-direction: column; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border); }
         .test-controls { display: flex; gap: 10px; flex-wrap: wrap; }
         .status-btn { background-color: var(--bg-color); color: var(--text-muted); border: 1px solid var(--border); }
@@ -68,6 +66,7 @@
             <div class="nav-item active" onclick="switchView('run')">▶️ Run Tests</div>
             <div class="nav-item" onclick="switchView('suites')">📁 Manage Suites</div>
             <div class="nav-item" onclick="switchView('history')">🕰️ History</div>
+            <div class="nav-item" onclick="switchView('settings')">⚙️ Settings</div>
         </div>
     </nav>
 
@@ -77,14 +76,10 @@
                 <h2>Select a Suite to Test</h2>
                 <div class="suite-grid" id="run-suite-grid"></div>
             </div>
-
             <div id="active-test-section" class="hidden">
-                <h2>
-                    <button class="btn-outline" onclick="showPicker()">⬅ Back</button>
-                    Testing: <span id="active-suite-name"></span>
-                </h2>
+                <h2><button class="btn-outline" onclick="showPicker()">⬅ Back</button> Testing: <span id="active-suite-name"></span></h2>
                 <div class="card" id="test-container"></div>
-                <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;" onclick="generateReport()">Generate & Save JIRA Report</button>
+                <button class="btn-primary" style="width: 100%; padding: 15px;" onclick="generateReport()">Generate & Save JIRA Report</button>
                 <textarea id="jira-output" readonly></textarea>
             </div>
         </div>
@@ -92,11 +87,11 @@
         <div id="view-suites" class="view">
             <h2>Test Suites <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button></h2>
             <div id="suite-list"></div>
-            <div class="card" id="suite-editor" style="display: none; margin-top: 20px;">
-                <h3 id="editor-title">Create New Suite</h3>
+            <div class="card" id="suite-editor" style="display: none;">
+                <h3 id="editor-title">Suite Editor</h3>
                 <input type="hidden" id="edit-suite-id">
                 <input type="text" id="edit-suite-name" placeholder="Suite Name">
-                <textarea id="edit-suite-tests" style="height: 200px;" placeholder="Test Case 1&#10;Test Case 2"></textarea>
+                <textarea id="edit-suite-tests" style="height: 200px;" placeholder="One test per line..."></textarea>
                 <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
                 <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
             </div>
@@ -106,13 +101,28 @@
             <h2>Run History</h2>
             <div id="history-list"></div>
         </div>
+
+        <div id="view-settings" class="view">
+            <h2>Settings & Backup</h2>
+            <div class="card">
+                <h3>Export Data</h3>
+                <p style="margin-bottom: 15px; color: var(--text-muted);">Download all suites and history as a JSON file.</p>
+                <button class="btn-primary" onclick="exportData()">Download Backup (.json)</button>
+            </div>
+            <div class="card">
+                <h3>Import Data</h3>
+                <p style="margin-bottom: 15px; color: var(--text-muted);">Restore from a previously saved JSON backup.</p>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+                <button class="btn-outline" onclick="document.getElementById('import-file').click()">Upload Backup File</button>
+            </div>
+        </div>
     </main>
 
     <script>
         let suites = JSON.parse(localStorage.getItem('qa_suites')) || [{
             id: 'default_1',
-            name: "Main Regression",
-            tests: ["Buy: Hosting", "Upgrade & Renew: Prorated", "UI: Mobile Check"]
+            name: "Example Suite",
+            tests: ["Login Check", "Checkout Test"]
         }];
         let history = JSON.parse(localStorage.getItem('qa_history')) || [];
         let currentRunState = [];
@@ -127,13 +137,12 @@
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
-            event.currentTarget.classList.add('active');
+            if (event) event.currentTarget.classList.add('active');
             if (viewId === 'run') showPicker();
             if (viewId === 'suites') renderSuites();
             if (viewId === 'history') renderHistory();
         }
 
-        // RUNNER LOGIC
         function showPicker() {
             document.getElementById('suite-picker-section').classList.remove('hidden');
             document.getElementById('active-test-section').classList.add('hidden');
@@ -141,7 +150,7 @@
             grid.innerHTML = suites.map(s => `
                 <div class="suite-select-card" onclick="startRun('${s.id}')">
                     <h3>${s.name}</h3>
-                    <p style="color:var(--text-muted)">${s.tests.length} Cases</p>
+                    <p>${s.tests.length} Cases</p>
                 </div>
             `).join('');
         }
@@ -151,7 +160,6 @@
             const suite = suites.find(s => s.id === id);
             document.getElementById('active-suite-name').innerText = suite.name;
             currentRunState = suite.tests.map(t => ({ name: t, status: 'Pending', notes: '' }));
-            
             document.getElementById('suite-picker-section').classList.add('hidden');
             document.getElementById('active-test-section').classList.remove('hidden');
             document.getElementById('jira-output').style.display = 'none';
@@ -167,7 +175,7 @@
                         <button class="status-btn ${test.status === 'Pass' ? 'active' : ''}" data-status="Pass" onclick="updateStatus(${index}, 'Pass')">Pass</button>
                         <button class="status-btn ${test.status === 'Fail' ? 'active' : ''}" data-status="Fail" onclick="updateStatus(${index}, 'Fail')">Fail</button>
                         <button class="status-btn ${test.status === 'Skip' ? 'active' : ''}" data-status="Skip" onclick="updateStatus(${index}, 'Skip')">Skip</button>
-                        <input type="text" placeholder="Notes/Bug..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom:0; flex-grow:1;">
+                        <input type="text" placeholder="Notes..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom:0; flex-grow:1;">
                     </div>
                 </div>
             `).join('');
@@ -183,9 +191,7 @@
             const skips = currentRunState.filter(s => s.status === 'Skip');
 
             let report = `h2. Regression: ${suite.name}\n\n`;
-            if (fails.length) {
-                report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.name}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
-            }
+            if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.name}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
             report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.name}`).join('\n') + "\n{panel}";
 
             const out = document.getElementById('jira-output');
@@ -194,10 +200,9 @@
             
             history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report: report });
             saveData();
-            alert("Copied to clipboard!");
+            alert("Report generated, copied, and saved to history!");
         }
 
-        // SUITE MANAGEMENT
         function renderSuites() {
             const list = document.getElementById('suite-list');
             list.innerHTML = suites.map(s => `
@@ -205,7 +210,7 @@
                     <div><strong>${s.name}</strong> (${s.tests.length} tests)</div>
                     <div>
                         <button class="btn-outline" onclick="editSuite('${s.id}')">Edit</button>
-                        <button class="btn-outline" style="color:var(--fail-text)" onclick="deleteSuite('${s.id}')">Delete</button>
+                        <button class="btn-danger" onclick="deleteSuite('${s.id}')">Delete</button>
                     </div>
                 </div>
             `).join('');
@@ -218,11 +223,9 @@
             const id = document.getElementById('edit-suite-id').value || Date.now().toString();
             const name = document.getElementById('edit-suite-name').value;
             const tests = document.getElementById('edit-suite-tests').value.split('\n').filter(t => t.trim());
-            
             const idx = suites.findIndex(s => s.id === id);
             if (idx > -1) suites[idx] = { id, name, tests };
             else suites.push({ id, name, tests });
-            
             saveData(); hideSuiteEditor(); renderSuites();
         }
 
@@ -236,14 +239,54 @@
 
         function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
 
-        // HISTORY
         function renderHistory() {
             document.getElementById('history-list').innerHTML = history.map(h => `
                 <div class="card">
-                    <small>${h.date} - ${h.suiteName}</small>
-                    <textarea readonly style="height:60px; font-size:0.8rem;">${h.report}</textarea>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px">
+                        <strong>${h.date} - ${h.suiteName}</strong>
+                        <button class="btn-danger" style="padding:4px 8px" onclick="deleteHistory(${h.id})">Delete</button>
+                    </div>
+                    <textarea readonly style="height:80px; font-size:0.85rem; background:#fafafa">${h.report}</textarea>
                 </div>
             `).join('');
+        }
+
+        function deleteHistory(id) { if(confirm("Delete this record?")) { history = history.filter(h => h.id !== id); saveData(); renderHistory(); } }
+
+        // EXPORT/IMPORT LOGIC
+        function exportData() {
+            const data = { suites, history, version: "1.0" };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `qa_hub_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.suites && imported.history) {
+                        if (confirm("This will overwrite your current suites and history. Continue?")) {
+                            suites = imported.suites;
+                            history = imported.history;
+                            saveData();
+                            alert("Data restored successfully!");
+                            location.reload();
+                        }
+                    } else {
+                        alert("Invalid backup file format.");
+                    }
+                } catch (err) {
+                    alert("Error reading file.");
+                }
+            };
+            reader.readAsText(file);
         }
 
         showPicker();
