@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Regression Hub</title>
+    <style>
+        :root {
+            --primary: #0052cc;
+            --primary-hover: #003d99;
+            --bg-color: #f4f5f7;
+            --nav-bg: #172b4d;
+            --text-main: #172b4d;
+            --text-muted: #6b778c;
+            --pass-bg: #e3fcef; --pass-border: #36b37e; --pass-text: #006644;
+            --fail-bg: #ffebe6; --fail-border: #ff5630; --fail-text: #bf2600;
+            --skip-bg: #eae6ff; --skip-border: #6554c0; --skip-text: #403294;
+            --card-bg: #ffffff;
+            --border: #dfe1e6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-main); }
+        
+        /* Sidebar Navigation */
+        nav { width: 250px; background-color: var(--nav-bg); color: white; display: flex; flex-direction: column; }
+        .nav-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; }
+        .nav-items { flex-grow: 1; padding: 20px 0; }
+        .nav-item { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s; opacity: 0.8; }
+        .nav-item:hover, .nav-item.active { background-color: rgba(255,255,255,0.1); opacity: 1; }
+        .nav-item.active { border-left: 4px solid var(--primary); }
+
+        /* Main Content Area */
+        main { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .view { display: none; max-width: 1000px; margin: 0 auto; }
+        .view.active { display: block; }
+        
+        h2 { margin-bottom: 20px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; border: 1px solid var(--border); }
+        
+        /* Buttons & Inputs */
+        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; font-size: 0.9rem; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background-color: var(--bg-color); }
+        
+        select, input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; margin-bottom: 10px; }
+        textarea { resize: vertical; min-height: 100px; }
+
+        /* Test Runner Styles */
+        .test-row { display: flex; flex-direction: column; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border); }
+        .test-row:last-child { border-bottom: none; }
+        .test-title { font-weight: 600; font-size: 1.05rem; }
+        .test-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        
+        .status-btn { background-color: var(--bg-color); color: var(--text-muted); border: 1px solid var(--border); }
+        .status-btn[data-status="Pass"].active { background-color: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
+        .status-btn[data-status="Fail"].active { background-color: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
+        .status-btn[data-status="Skip"].active { background-color: var(--skip-bg); border-color: var(--skip-border); color: var(--skip-text); }
+
+        #jira-output { font-family: monospace; height: 150px; background: #f8f9fa; display: none; margin-top: 20px;}
+
+        /* Suite Manager Styles */
+        .suite-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid var(--border); margin-bottom: 10px; border-radius: 4px; background: white; }
+        .suite-actions button { margin-left: 5px; }
+
+        /* History Styles */
+        .history-item { border-left: 4px solid var(--primary); }
+        .history-meta { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-header">🧪 QA Hub</div>
+        <div class="nav-items">
+            <div class="nav-item active" onclick="switchView('run')">▶️ Run Tests</div>
+            <div class="nav-item" onclick="switchView('suites')">📁 Manage Suites</div>
+            <div class="nav-item" onclick="switchView('history')">🕰️ History</div>
+        </div>
+    </nav>
+
+    <main>
+        <div id="view-run" class="view active">
+            <h2>
+                Execute Test Run
+                <select id="suite-selector" style="width: auto; margin-bottom: 0;" onchange="loadSuite()"></select>
+            </h2>
+            <div class="card" id="test-container">
+                </div>
+            <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;" onclick="generateReport()">Generate & Save JIRA Report</button>
+            <textarea id="jira-output" readonly placeholder="Report will appear here..."></textarea>
+        </div>
+
+        <div id="view-suites" class="view">
+            <h2>Test Suites <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button></h2>
+            <div id="suite-list">
+                </div>
+
+            <div class="card" id="suite-editor" style="display: none; margin-top: 20px; border-top: 4px solid var(--primary);">
+                <h3 style="margin-bottom: 15px;" id="editor-title">Create New Suite</h3>
+                <input type="hidden" id="edit-suite-id">
+                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Checkout Regression)">
+                <label style="font-size: 0.9rem; color: var(--text-muted);">Paste test cases below (one per line):</label>
+                <textarea id="edit-suite-tests" style="height: 250px;" placeholder="Test Case 1&#10;Test Case 2&#10;Test Case 3"></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
+                    <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-history" class="view">
+            <h2>Run History</h2>
+            <div id="history-list">
+                </div>
+        </div>
+    </main>
+
+    <script>
+        // --- DATA MANAGEMENT (localStorage) ---
+        const DEFAULT_SUITE = {
+            id: 'default_1',
+            name: "Main Regression Example",
+            tests: [
+                "Buy: Hosting (With/Without)", "Buy: SC (Supports / Does not support hosting)", "Buy: Multiple years max limit",
+                "Upgrade & Renew: Remaining validity", "Upgrade & Renew: Unactivated License", "Upgrade & Renew: Prorated",
+                "Downgrade: To valid Edition", "Downgrade: To invalid Edition (Should not allow)", "Free: Renewing a 4SC Free",
+                "UI: Double check on mobile", "UI: Double check shopping cart ADD MORE"
+            ]
+        };
+
+        let suites = JSON.parse(localStorage.getItem('qa_suites')) || [DEFAULT_SUITE];
+        let history = JSON.parse(localStorage.getItem('qa_history')) || [];
+        let currentRunState = [];
+
+        function saveData() {
+            localStorage.setItem('qa_suites', JSON.stringify(suites));
+            localStorage.setItem('qa_history', JSON.stringify(history));
+        }
+
+        // --- NAVIGATION ---
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+
+            if (viewId === 'run') populateSuiteDropdown();
+            if (viewId === 'suites') renderSuites();
+            if (viewId === 'history') renderHistory();
+        }
+
+        // --- VIEW: RUN TESTS ---
+        function populateSuiteDropdown() {
+            const select = document.getElementById('suite-selector');
+            select.innerHTML = suites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            if (suites.length > 0) loadSuite();
+        }
+
+        function loadSuite() {
+            const suiteId = document.getElementById('suite-selector').value;
+            const suite = suites.find(s => s.id === suiteId);
+            if (!suite) return;
+
+            currentRunState = suite.tests.map(t => ({ name: t, status: 'Pending', notes: '' }));
+            renderTestRun();
+            document.getElementById('jira-output').style.display = 'none';
+        }
+
+        function renderTestRun() {
+            const container = document.getElementById('test-container');
+            if (currentRunState.length === 0) {
+                container.innerHTML = "<p style='color: var(--text-muted)'>No tests in this suite.</p>";
+                return;
+            }
+
+            container.innerHTML = currentRunState.map((test, index) => `
+                <div class="test-row">
+                    <div class="test-title">${test.name}</div>
+                    <div class="test-controls">
+                        <button class="status-btn ${test.status === 'Pass' ? 'active' : ''}" data-status="Pass" onclick="updateStatus(${index}, 'Pass')">Pass</button>
+                        <button class="status-btn ${test.status === 'Fail' ? 'active' : ''}" data-status="Fail" onclick="updateStatus(${index}, 'Fail')">Fail</button>
+                        <button class="status-btn ${test.status === 'Skip' ? 'active' : ''}" data-status="Skip" onclick="updateStatus(${index}, 'Skip')">Skip</button>
+                        <button class="status-btn" onclick="updateStatus(${index}, 'Pending')">Reset</button>
+                        <input type="text" placeholder="JIRA Bug ID or Notes..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom: 0; flex-grow: 1; min-width: 200px;">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStatus(index, status) {
+            currentRunState[index].status = status;
+            renderTestRun();
+        }
+
+        function updateNotes(index, notes) {
+            currentRunState[index].notes = notes;
+        }
+
+        function generateReport() {
+            const suiteName = suites.find(s => s.id === document.getElementById('suite-selector').value).name;
+            const fails = currentRunState.filter(s => s.status === 'Fail');
+            const passes = currentRunState.filter(s => s.status === 'Pass');
+            const skips = currentRunState.filter(s => s.status === 'Skip');
+
+            let report = `h2. Regression Run: ${suiteName}\n\n`;
+
+            if (fails.length > 0) {
+                report += "{panel:title=🚨 Failed Tests|borderStyle=solid|borderColor=#ff5630|titleBGColor=#ffebe6}\n";
+                fails.forEach(f => report += `* *${f.name}*\n  * Notes: ${f.notes || '_No notes_'}\n`);
+                report += "{panel}\n\n";
+            }
+            if (passes.length > 0) {
+                report += "{panel:title=✅ Passed Tests|borderStyle=solid|borderColor=#36b37e|titleBGColor=#e3fcef}\n";
+                passes.forEach(p => report += `* ${p.name} ${p.notes ? `-(Notes: ${p.notes})-` : ''}\n`);
+                report += "{panel}\n\n";
+            }
+            if (skips.length > 0) {
+                report += "{panel:title=⏭️ Skipped Tests|borderStyle=solid|borderColor=#6554c0|titleBGColor=#eae6ff}\n";
+                skips.forEach(s => report += `* ${s.name} ${s.notes ? `-(Reason: ${s.notes})-` : ''}\n`);
+                report += "{panel}\n";
+            }
+
+            // Display
+            const output = document.getElementById('jira-output');
+            output.style.display = 'block';
+            output.value = report;
+            output.select();
+            document.execCommand('copy');
+            
+            // Save to History
+            const runRecord = {
+                id: Date.now().toString(),
+                date: new Date().toLocaleString(),
+                suiteName: suiteName,
+                report: report
+            };
+            history.unshift(runRecord); // Add to beginning
+            saveData();
+
+            alert("Report copied to clipboard & saved to History!");
+        }
+
+        // --- VIEW: MANAGE SUITES ---
+        function renderSuites() {
+            const list = document.getElementById('suite-list');
+            list.innerHTML = suites.map(s => `
+                <div class="suite-item">
+                    <div>
+                        <strong>${s.name}</strong> <br>
+                        <small style="color: var(--text-muted)">${s.tests.length} test cases</small>
+                    </div>
+                    <div class="suite-actions">
+                        <button class="btn-outline" onclick="editSuite('${s.id}')">Edit</button>
+                        <button class="btn-outline" style="color: var(--fail-border); border-color: var(--fail-border);" onclick="deleteSuite('${s.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showSuiteEditor() {
+            document.getElementById('suite-editor').style.display = 'block';
+            document.getElementById('edit-suite-id').value = '';
+            document.getElementById('edit-suite-name').value = '';
+            document.getElementById('edit-suite-tests').value = '';
+            document.getElementById('editor-title').innerText = "Create New Suite";
+        }
+
+        function hideSuiteEditor() {
+            document.getElementById('suite-editor').style.display = 'none';
+        }
+
+        function editSuite(id) {
+            const suite = suites.find(s => s.id === id);
+            showSuiteEditor();
+            document.getElementById('editor-title').innerText = "Edit Suite";
+            document.getElementById('edit-suite-id').value = suite.id;
+            document.getElementById('edit-suite-name').value = suite.name;
+            document.getElementById('edit-suite-tests').value = suite.tests.join('\n');
+            document.getElementById('suite-editor').scrollIntoView({behavior: "smooth"});
+        }
+
+        function saveSuite() {
+            const id = document.getElementById('edit-suite-id').value;
+            const name = document.getElementById('edit-suite-name').value.trim();
+            const testsText = document.getElementById('edit-suite-tests').value;
+            const tests = testsText.split('\n').map(t => t.trim()).filter(t => t !== '');
+
+            if (!name || tests.length === 0) return alert("Please provide a name and at least one test case.");
+
+            if (id) {
+                const index = suites.findIndex(s => s.id === id);
+                suites[index] = { id, name, tests };
+            } else {
+                suites.push({ id: Date.now().toString(), name, tests });
+            }
+
+            saveData();
+            hideSuiteEditor();
+            renderSuites();
+        }
+
+        function deleteSuite(id) {
+            if(confirm("Are you sure you want to delete this suite?")) {
+                suites = suites.filter(s => s.id !== id);
+                saveData();
+                renderSuites();
+            }
+        }
+
+        // --- VIEW: HISTORY ---
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            if(history.length === 0) {
+                list.innerHTML = "<p style='color: var(--text-muted)'>No run history yet.</p>";
+                return;
+            }
+
+            list.innerHTML = history.map(h => `
+                <div class="card history-item">
+                    <div class="history-meta">📅 ${h.date} | 📂 ${h.suiteName}</div>
+                    <textarea readonly style="height: 100px; font-family: monospace; font-size: 0.85rem; background: #f8f9fa;">${h.report}</textarea>
+                    <button class="btn-outline" onclick="copyText(this)">📋 Copy to Clipboard</button>
+                    <button class="btn-outline" style="color: var(--fail-border); border-color: var(--fail-border); margin-left: 10px;" onclick="deleteHistory('${h.id}')">Delete Record</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteHistory(id) {
+            if(confirm("Delete this history record?")) {
+                history = history.filter(h => h.id !== id);
+                saveData();
+                renderHistory();
+            }
+        }
+
+        function copyText(btnElement) {
+            const textarea = btnElement.previousElementSibling;
+            textarea.select();
+            document.execCommand('copy');
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "✅ Copied!";
+            setTimeout(() => btnElement.innerText = originalText, 2000);
+        }
+
+        // Init
+        populateSuiteDropdown();
+
+    </script>
+</body>
+</html>
