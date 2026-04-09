@@ -18,16 +18,15 @@ function switchView(viewId) {
     if (viewId === 'history') renderHistory();
 }
 
-// --- RUNNER ---
 function showPicker() {
     const grid = document.getElementById('run-suite-grid');
     grid.innerHTML = suites.map(s => `
-        <div class="card" style="cursor:pointer; text-align:center" onclick="startRun('${s.id}')">
-            <h3>${s.name}</h3>
-            <p>${s.tests.length} Steps</p>
+        <div class="card" style="cursor:pointer;" onclick="startRun('${s.id}')">
+            <h3 style="color:var(--primary)">${s.name}</h3>
+            <p style="color:var(--text-muted); font-size:14px; margin-top:5px">${s.tests.length} test steps</p>
         </div>
     `).join('');
-    document.getElementById('run-empty-msg').className = suites.length === 0 ? "empty-state" : "hidden";
+    document.getElementById('run-empty-msg').style.display = suites.length === 0 ? "block" : "none";
 }
 
 function startRun(id) {
@@ -51,7 +50,7 @@ function renderTestRun() {
                 <div class="test-controls ${isHeader ? 'hidden' : ''}">
                     <button class="status-btn p ${test.status==='Pass'?'active':''}" onclick="updateStatus(${index}, 'Pass')">Pass</button>
                     <button class="status-btn f ${test.status==='Fail'?'active':''}" onclick="updateStatus(${index}, 'Fail')">Fail</button>
-                    <input type="text" placeholder="Note..." value="${test.notes}" onchange="currentRunState[${index}].notes=this.value">
+                    <input type="text" placeholder="Note..." value="${test.notes}" onchange="currentRunState[${index}].notes=this.value" style="padding:6px; border:1px solid var(--border); border-radius:4px; font-size:12px">
                 </div>
             </div>
         `;
@@ -63,11 +62,9 @@ function updateStatus(i, s) { currentRunState[i].status = s; renderTestRun(); }
 function generateReport() {
     const suite = suites.find(s => s.id === activeSuiteId);
     const fails = currentRunState.filter(s => s.status === 'Fail');
-    const passes = currentRunState.filter(s => s.status === 'Pass');
-    
     let report = `h2. Regression: ${suite.name}\n\n`;
     if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.text}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
-    report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.text}`).join('\n') + "\n{panel}";
+    report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + currentRunState.filter(s=>s.status==='Pass').map(p => `* ${p.text}`).join('\n') + "\n{panel}";
     
     const out = document.getElementById('jira-output');
     out.style.display = 'block'; out.value = report; out.select();
@@ -76,7 +73,7 @@ function generateReport() {
     saveData(); alert("Copied to clipboard!");
 }
 
-// --- BUILDER ---
+// --- CLEANER BUILDER ---
 function showSuiteEditor(id = null) {
     document.getElementById('suite-editor').style.display = 'block';
     if (id) {
@@ -95,46 +92,57 @@ function showSuiteEditor(id = null) {
 function renderEditor() {
     const container = document.getElementById('editor-items-list');
     container.innerHTML = editingTests.map((t, i) => `
-        <div class="editor-line" style="--level: ${t.level}">
-            <button onclick="move(${i}, -1)">◀</button>
-            <button onclick="move(${i}, 1)">▶</button>
-            <input type="text" value="${t.text}" oninput="editingTests[${i}].text=this.value" style="flex:1">
-            <button onclick="editingTests.splice(${i},1);renderEditor()" style="color:red">✕</button>
+        <div class="editor-line" style="margin-left: ${t.level * 30}px">
+            <div class="indent-controls">
+                <button class="btn-sm" onclick="move(${i}, -1)">◀</button>
+                <button class="btn-sm" onclick="move(${i}, 1)">▶</button>
+            </div>
+            <input type="text" class="editor-input" value="${t.text}" oninput="editingTests[${i}].text=this.value" placeholder="Enter test requirement...">
+            <span class="delete-btn" onclick="editingTests.splice(${i},1);renderEditor()">✕</span>
         </div>
     `).join('');
 }
 
-function move(i, dir) { editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir)); renderEditor(); }
-function addLine() { editingTests.push({ text: '', level: 0 }); renderEditor(); }
-function hideSuiteEditor() { document.getElementById('suite-editor').style.display = 'none'; }
+function move(i, dir) { 
+    editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir)); 
+    renderEditor(); 
+}
+
+function addLine() { 
+    editingTests.push({ text: '', level: editingTests.length > 0 ? editingTests[editingTests.length-1].level : 0 }); 
+    renderEditor(); 
+}
 
 function saveSuite() {
     const name = document.getElementById('edit-suite-name').value;
+    if(!name) return alert("Please name your suite");
     const id = document.getElementById('edit-suite-id').value || Date.now().toString();
     const idx = suites.findIndex(s => s.id === id);
     if (idx > -1) suites[idx] = { id, name, tests: editingTests };
     else suites.push({ id, name, tests: editingTests });
-    saveData(); hideSuiteEditor(); renderSuites();
+    saveData(); document.getElementById('suite-editor').style.display='none'; renderSuites();
 }
 
 function renderSuites() {
     document.getElementById('suite-list').innerHTML = suites.map(s => `
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center">
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
             <strong>${s.name}</strong>
             <div>
-                <button onclick="editSuite('${s.id}')">Edit</button>
-                <button onclick="deleteSuite('${s.id}')" class="btn-danger">Delete</button>
+                <button class="btn-sm" onclick="showSuiteEditor('${s.id}')">Edit</button>
+                <button class="btn-sm" style="color:red" onclick="deleteSuite('${s.id}')">Delete</button>
             </div>
         </div>
     `).join('');
 }
-function editSuite(id) { showSuiteEditor(id); }
-function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
 
-// history and global settings logic
+function deleteSuite(id) { if(confirm("Delete suite?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
+
 function renderHistory() {
     document.getElementById('history-list').innerHTML = history.map(h => `
-        <div class="card"><strong>${h.date} - ${h.suiteName}</strong><br><textarea readonly style="width:100%;height:60px;margin-top:10px">${h.report}</textarea></div>
+        <div class="card" style="margin-bottom:10px">
+            <strong>${h.date} - ${h.suiteName}</strong>
+            <textarea readonly style="width:100%; height:60px; margin-top:10px; border:1px solid #eee; padding:5px; font-size:12px">${h.report}</textarea>
+        </div>
     `).join('');
 }
 
