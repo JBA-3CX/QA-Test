@@ -7,21 +7,19 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-body { display: flex; height: 100vh; background: var(--bg-color); }
+body { display: flex; height: 100vh; background: var(--bg-color); color: var(--text-main); }
 
-/* Sidebar */
 nav { width: 240px; background: var(--nav-bg); color: white; flex-shrink: 0; }
 .nav-header { padding: 25px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .nav-item { padding: 15px 25px; cursor: pointer; opacity: 0.7; }
 .nav-item.active { opacity: 1; background: rgba(255,255,255,0.1); border-left: 4px solid var(--primary); }
 
-/* Main Content */
 main { flex: 1; padding: 40px; overflow-y: auto; }
-.view { display: none; max-width: 900px; margin: 0 auto; }
+.view { display: none; max-width: 1000px; margin: 0 auto; }
 .view.active { display: block; }
 .card { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; }
 
-/* The Fix: Stable Indentation */
+/* The Fix: Cleaner Rows & Indentation */
 .test-row { 
     display: flex; 
     justify-content: space-between; 
@@ -31,39 +29,27 @@ main { flex: 1; padding: 40px; overflow-y: auto; }
     margin-bottom: 4px; 
     border: 1px solid var(--border);
     border-radius: 6px;
+    position: relative;
 }
 
-/* We use margin for indentation so it doesn't break the box */
-.level-0 { margin-left: 0; }
-.level-1 { margin-left: 40px; border-left: 4px solid #ddd; }
-.level-2 { margin-left: 80px; border-left: 4px solid #eee; }
-.level-3 { margin-left: 120px; border-left: 4px solid #f9f9f9; }
+/* Vertical guide lines that don't look like weird brackets */
+.level-1 { margin-left: 30px; border-left: 3px solid #0052cc; }
+.level-2 { margin-left: 60px; border-left: 3px solid #4c9aff; }
+.level-3 { margin-left: 90px; border-left: 3px solid #deebff; }
 
-.is-header { 
-    background: #f4f5f7; 
-    font-weight: bold; 
-    color: var(--primary); 
-    border-left: 4px solid var(--primary) !important;
-    margin-top: 15px;
-}
+.test-text { font-weight: 500; flex: 1; margin-right: 15px; }
 
-/* Controls */
 .test-controls { display: flex; gap: 8px; align-items: center; }
-.status-btn { padding: 6px 12px; border: 1px solid var(--border); background: white; border-radius: 4px; cursor: pointer; }
+.status-btn { padding: 6px 12px; border: 1px solid var(--border); background: white; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
 .status-btn.active.p { background: #36b37e; color: white; border-color: #36b37e; }
 .status-btn.active.f { background: #ff5630; color: white; border-color: #ff5630; }
 
-/* Editor Builder Fix */
-.editor-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    padding: 5px;
-}
+.note-input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; width: 180px; font-size: 12px; }
 
+/* Builder UI Fixes */
+.editor-line { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .editor-input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; }
-.btn-primary { background: var(--primary); color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; border: none; }
+.btn-primary { background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
 .btn-outline { background: white; border: 1px solid var(--border); padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-#jira-output { width: 100%; height: 120px; margin-top: 20px; padding: 10px; font-family: monospace; }
+#jira-output { width: 100%; height: 120px; margin-top: 20px; font-family: monospace; padding: 10px; }
 .hidden { display: none !important; }
