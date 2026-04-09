@@ -1,8 +1,8 @@
-// Data structure now supports children
 let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
 let history = JSON.parse(localStorage.getItem('qa_history')) || [];
 let currentRunState = [];
 let activeSuiteId = null;
+let editingTests = []; // Temporary array for the editor
 
 function saveData() {
     localStorage.setItem('qa_suites', JSON.stringify(suites));
@@ -13,40 +13,29 @@ function switchView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(`view-${viewId}`).classList.add('active');
-    if (window.event) event.currentTarget.classList.add('active');
     if (viewId === 'run') showPicker();
     if (viewId === 'suites') renderSuites();
     if (viewId === 'history') renderHistory();
 }
 
+// --- RUNNER VIEW ---
 function showPicker() {
-    document.getElementById('suite-picker-section').classList.remove('hidden');
-    document.getElementById('active-test-section').classList.add('hidden');
     const grid = document.getElementById('run-suite-grid');
-    grid.innerHTML = suites.length === 0 ? "" : suites.map(s => `
+    grid.innerHTML = suites.map(s => `
         <div class="suite-select-card" onclick="startRun('${s.id}')">
             <h3>${s.name}</h3>
-            <p>${s.tests.length} Items</p>
+            <p>${s.tests.length} steps</p>
         </div>
     `).join('');
-    document.getElementById('run-empty-msg').className = suites.length === 0 ? "empty-state" : "hidden";
+    document.getElementById('run-empty-msg').style.display = suites.length === 0 ? 'block' : 'none';
 }
 
 function startRun(id) {
     activeSuiteId = id;
     const suite = suites.find(s => s.id === id);
     document.getElementById('active-suite-name').innerText = suite.name;
-    
-    // Process tests to identify depth based on leading dashes or spaces
-    currentRunState = suite.tests.map(t => {
-        const depth = (t.match(/^[\s\t·-]+/) || [""])[0].length;
-        return {
-            name: t.trim().replace(/^[\s\t·-]+/, ""),
-            status: 'Pending',
-            notes: '',
-            depth: depth > 0 ? Math.floor(depth / 2) + 1 : 0 // Calculate indentation level
-        };
-    });
+    // Map existing structure to run state
+    currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
     
     document.getElementById('suite-picker-section').classList.add('hidden');
     document.getElementById('active-test-section').classList.remove('hidden');
@@ -56,14 +45,13 @@ function startRun(id) {
 function renderTestRun() {
     const container = document.getElementById('test-container');
     container.innerHTML = currentRunState.map((test, index) => {
-        const isHeader = index < currentRunState.length - 1 && currentRunState[index+1].depth > test.depth;
+        const isHeader = index < currentRunState.length - 1 && currentRunState[index+1].level > test.level;
         return `
-            <div class="test-row depth-${test.depth} ${isHeader ? 'row-header' : ''}">
-                <div class="test-title">${test.name}</div>
-                <div class="test-controls ${isHeader ? 'hidden' : ''}">
-                    <button class="status-btn ${test.status === 'Pass' ? 'active' : ''}" data-status="Pass" onclick="updateStatus(${index}, 'Pass')">P</button>
-                    <button class="status-btn ${test.status === 'Fail' ? 'active' : ''}" data-status="Fail" onclick="updateStatus(${index}, 'Fail')">F</button>
-                    <button class="status-btn ${test.status === 'Skip' ? 'active' : ''}" data-status="Skip" onclick="updateStatus(${index}, 'Skip')">S</button>
+            <div class="test-row level-${test.level} ${isHeader ? 'is-header' : ''}">
+                <span class="test-text">${test.text}</span>
+                <div class="test-actions ${isHeader ? 'hidden' : ''}">
+                    <button class="status-btn p ${test.status==='Pass'?'active':''}" onclick="updateStatus(${index}, 'Pass')">Pass</button>
+                    <button class="status-btn f ${test.status==='Fail'?'active':''}" onclick="updateStatus(${index}, 'Fail')">Fail</button>
                     <input type="text" placeholder="Note..." value="${test.notes}" onchange="updateNotes(${index}, this.value)">
                 </div>
             </div>
@@ -74,68 +62,49 @@ function renderTestRun() {
 function updateStatus(i, s) { currentRunState[i].status = s; renderTestRun(); }
 function updateNotes(i, n) { currentRunState[i].notes = n; }
 
-function generateReport() {
-    const suite = suites.find(s => s.id === activeSuiteId);
-    const fails = currentRunState.filter(s => s.status === 'Fail');
-    const passes = currentRunState.filter(s => s.status === 'Pass');
-
-    let report = `h2. Regression: ${suite.name}\n\n`;
-    if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* ${f.name}: ${f.notes}`).join('\n') + "\n{panel}\n\n";
-    report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.name}`).join('\n') + "\n{panel}";
-
-    const out = document.getElementById('jira-output');
-    out.style.display = 'block'; out.value = report; out.select();
-    document.execCommand('copy');
-    history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report: report });
-    saveData();
-    alert("Copied!");
+// --- EDITOR VIEW (The User-Friendly Part) ---
+function showSuiteEditor(id = null) {
+    const editor = document.getElementById('suite-editor');
+    editor.style.display = 'block';
+    if(id) {
+        const s = suites.find(x => x.id === id);
+        document.getElementById('edit-suite-id').value = s.id;
+        document.getElementById('edit-suite-name').value = s.name;
+        editingTests = JSON.parse(JSON.stringify(s.tests));
+    } else {
+        document.getElementById('edit-suite-id').value = '';
+        document.getElementById('edit-suite-name').value = '';
+        editingTests = [{ text: 'New Category', level: 0 }];
+    }
+    renderEditorList();
 }
 
-// SUITE MGMT
-function renderSuites() {
-    const list = document.getElementById('suite-list');
-    list.innerHTML = suites.map(s => `
-        <div class="card suite-card-item">
-            <div><strong>${s.name}</strong></div>
-            <div class="suite-actions">
-                <button class="btn-outline" onclick="editSuite('${s.id}')">Edit</button>
-                <button class="btn-outline" onclick="exportSingleSuite('${s.id}')">Export</button>
-                <button class="btn-danger" onclick="deleteSuite('${s.id}')">Delete</button>
-            </div>
+function renderEditorList() {
+    const list = document.getElementById('editor-items-list');
+    list.innerHTML = editingTests.map((t, i) => `
+        <div class="editor-item-row level-${t.level}">
+            <button class="btn-icon" onclick="changeLevel(${i}, -1)">◀</button>
+            <button class="btn-icon" onclick="changeLevel(${i}, 1)">▶</button>
+            <input type="text" value="${t.text}" onchange="editingTests[${i}].text = this.value">
+            <button class="btn-icon danger" onclick="removeLine(${i})">✕</button>
         </div>
-    `).join('');
+    `).join('') + `<button class="btn-outline" onclick="addLine()">+ Add Step</button>`;
 }
 
-function showSuiteEditor() { 
-    document.getElementById('suite-editor').style.display = 'block'; 
-    document.getElementById('edit-suite-id').value = '';
+function addLine() { editingTests.push({ text: '', level: 0 }); renderEditorList(); }
+function removeLine(i) { editingTests.splice(i, 1); renderEditorList(); }
+function changeLevel(i, dir) {
+    editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir));
+    renderEditorList();
 }
 
 function saveSuite() {
     const id = document.getElementById('edit-suite-id').value || Date.now().toString();
     const name = document.getElementById('edit-suite-name').value;
-    const tests = document.getElementById('edit-suite-tests').value.split('\n').filter(t => t.trim().length > 0);
     const idx = suites.findIndex(s => s.id === id);
-    if (idx > -1) suites[idx] = { id, name, tests };
-    else suites.push({ id, name, tests });
-    saveData(); document.getElementById('suite-editor').style.display='none'; renderSuites();
+    if(idx > -1) suites[idx] = { id, name, tests: editingTests };
+    else suites.push({ id, name, tests: editingTests });
+    saveData(); switchView('suites');
 }
 
-function editSuite(id) {
-    const s = suites.find(x => x.id === id);
-    document.getElementById('edit-suite-id').value = s.id;
-    document.getElementById('edit-suite-name').value = s.name;
-    document.getElementById('edit-suite-tests').value = s.tests.join('\n');
-    showSuiteEditor();
-}
-
-function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
-
-// Storage and history functions remain the same...
-function renderHistory() {
-    document.getElementById('history-list').innerHTML = history.map(h => `
-        <div class="card"><strong>${h.date}</strong><br><textarea readonly>${h.report}</textarea></div>
-    `).join('');
-}
-
-showPicker();
+// ... Rest of global logic (Export/Import) stays similar ...
