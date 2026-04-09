@@ -1,52 +1,53 @@
-:root {
-    --primary: #0052cc;
-    --primary-hover: #003d99;
-    --bg-color: #f4f5f7;
-    --nav-bg: #172b4d;
-    --text-main: #172b4d;
-    --text-muted: #6b778c;
-    --pass-bg: #e3fcef; --pass-border: #36b37e; --pass-text: #006644;
-    --fail-bg: #ffebe6; --fail-border: #ff5630; --fail-text: #bf2600;
-    --skip-bg: #eae6ff; --skip-border: #6554c0; --skip-text: #403294;
-    --card-bg: #ffffff;
-    --border: #dfe1e6;
+/* Hierarchy and Grouping Styles */
+.test-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-main); }
+.row-header {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    color: var(--primary);
+    border-left: 4px solid var(--primary);
+}
 
-nav { width: 250px; background-color: var(--nav-bg); color: white; display: flex; flex-direction: column; }
-.nav-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.nav-items { flex-grow: 1; padding: 20px 0; }
-.nav-item { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s; opacity: 0.8; }
-.nav-item:hover, .nav-item.active { background-color: rgba(255,255,255,0.1); opacity: 1; }
-.nav-item.active { border-left: 4px solid var(--primary); }
+.test-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
 
-main { flex-grow: 1; padding: 30px; overflow-y: auto; }
-.view { display: none; max-width: 1000px; margin: 0 auto; }
-.view.active { display: block; }
+.test-controls.hidden {
+    display: none;
+}
 
-h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-.card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; border: 1px solid var(--border); }
+/* Indentation levels */
+.depth-1 { padding-left: 35px; border-left: 1px solid #ddd; }
+.depth-2 { padding-left: 55px; border-left: 1px solid #eee; font-style: italic; }
+.depth-3 { padding-left: 75px; color: #666; font-size: 0.9rem; }
 
-button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; white-space: nowrap; }
-.btn-primary { background-color: var(--primary); color: white; }
-.btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
-.btn-danger { background-color: transparent; border: 1px solid var(--fail-border); color: var(--fail-text); }
+/* Status Button Compactness */
+.status-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-.suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
-.suite-select-card { background: white; border: 2px solid var(--border); padding: 25px; border-radius: 8px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
-.suite-select-card:hover { border-color: var(--primary); transform: translateY(-3px); }
+.test-row input[type="text"] {
+    width: 150px;
+    margin-bottom: 0;
+    font-size: 0.8rem;
+}
 
-.test-row { display: flex; flex-direction: column; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border); }
-.test-controls { display: flex; gap: 10px; flex-wrap: wrap; }
-.status-btn { background-color: var(--bg-color); color: var(--text-muted); border: 1px solid var(--border); }
-.status-btn[data-status="Pass"].active { background-color: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
-.status-btn[data-status="Fail"].active { background-color: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
-.status-btn[data-status="Skip"].active { background-color: var(--skip-bg); border-color: var(--skip-border); color: var(--skip-text); }
-
-input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; }
-#jira-output { font-family: monospace; height: 150px; background: #f8f9fa; display: none; margin-top: 20px;}
-
-.hidden { display: none !important; }
-.empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+.suite-card-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
