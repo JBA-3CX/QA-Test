@@ -1,29 +1,51 @@
+// --- DATA MANAGEMENT ---
 let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
 let history = JSON.parse(localStorage.getItem('qa_history')) || [];
+let editingTests = []; 
 let currentRunState = [];
 let activeSuiteId = null;
-let editingTests = [];
 
 function saveData() {
     localStorage.setItem('qa_suites', JSON.stringify(suites));
     localStorage.setItem('qa_history', JSON.stringify(history));
 }
 
+// --- NAVIGATION ---
 function switchView(viewId) {
+    // Hide all views
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    // Deactivate all nav items
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById(`view-${viewId}`).classList.add('active');
+    
+    // Show target view
+    const targetView = document.getElementById(`view-${viewId}`);
+    if (targetView) targetView.classList.add('active');
+
+    // Highlight the correct nav item
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        // Find the item that mentions the viewId in its onclick
+        if (item.getAttribute('onclick').includes(viewId)) {
+            item.classList.add('active');
+        }
+    });
+
     if (viewId === 'run') showPicker();
     if (viewId === 'suites') renderSuites();
     if (viewId === 'history') renderHistory();
 }
 
+// --- RUNNER LOGIC ---
 function showPicker() {
+    // THE FIX: Explicitly hide the active test and show the picker
+    document.getElementById('suite-picker-section').classList.remove('hidden');
+    document.getElementById('active-test-section').classList.add('hidden');
+    
     const grid = document.getElementById('run-suite-grid');
     grid.innerHTML = suites.map(s => `
         <div class="card" style="cursor:pointer;" onclick="startRun('${s.id}')">
             <h3 style="color:var(--primary)">${s.name}</h3>
-            <p>${s.tests.length} steps</p>
+            <p style="color:var(--text-muted); font-size:14px; margin-top:5px">${s.tests.length} steps</p>
         </div>
     `).join('');
 }
@@ -31,10 +53,19 @@ function showPicker() {
 function startRun(id) {
     activeSuiteId = id;
     const suite = suites.find(s => s.id === id);
+    if (!suite) return;
+
     document.getElementById('active-suite-name').innerText = suite.name;
     currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
+    
+    // Switch internal sections
     document.getElementById('suite-picker-section').classList.add('hidden');
     document.getElementById('active-test-section').classList.remove('hidden');
+    
+    // Hide previous report output if any
+    const out = document.getElementById('jira-output');
+    if (out) out.style.display = 'none';
+
     renderTestRun();
 }
 
@@ -63,17 +94,21 @@ function generateReport() {
     const passes = currentRunState.filter(s => s.status === 'Pass');
 
     let report = `h2. Regression: ${suite.name}\n\n`;
-    if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.text}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
+    if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.text}*: ${f.notes || 'No notes'}`).join('\n') + "\n{panel}\n\n";
     report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.text}`).join('\n') + "\n{panel}";
 
     const out = document.getElementById('jira-output');
-    out.style.display = 'block'; out.value = report; out.select();
+    out.style.display = 'block'; 
+    out.value = report; 
+    out.select();
     document.execCommand('copy');
+    
     history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report });
-    saveData(); alert("Copied to clipboard!");
+    saveData(); 
+    alert("Copied to clipboard!");
 }
 
-// BUILDER
+// --- BUILDER LOGIC ---
 function showSuiteEditor(id = null) {
     document.getElementById('suite-editor').style.display = 'block';
     if (id && typeof id === 'string') {
@@ -101,20 +136,32 @@ function renderEditor() {
     `).join('');
 }
 
-function move(i, dir) { editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir)); renderEditor(); }
-function addLine() { editingTests.push({ text: '', level: editingTests[editingTests.length-1]?.level || 0 }); renderEditor(); }
+function move(i, dir) { 
+    editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir)); 
+    renderEditor(); 
+}
+
+function addLine() { 
+    const lastLevel = editingTests.length > 0 ? editingTests[editingTests.length-1].level : 0;
+    editingTests.push({ text: '', level: lastLevel }); 
+    renderEditor(); 
+}
 
 function saveSuite() {
     const name = document.getElementById('edit-suite-name').value;
+    if(!name) return alert("Please name your suite");
     const id = document.getElementById('edit-suite-id').value || Date.now().toString();
     const idx = suites.findIndex(s => s.id === id);
     if (idx > -1) suites[idx] = { id, name, tests: editingTests };
     else suites.push({ id, name, tests: editingTests });
-    saveData(); document.getElementById('suite-editor').style.display='none'; renderSuites();
+    saveData(); 
+    document.getElementById('suite-editor').style.display='none'; 
+    renderSuites();
 }
 
 function renderSuites() {
-    document.getElementById('suite-list').innerHTML = suites.map(s => `
+    const list = document.getElementById('suite-list');
+    list.innerHTML = suites.map(s => `
         <div class="card" style="display:flex; justify-content:space-between; align-items:center">
             <strong>${s.name}</strong>
             <div>
@@ -125,25 +172,41 @@ function renderSuites() {
     `).join('');
 }
 
-function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
+function deleteSuite(id) { 
+    if(confirm("Delete suite?")) { 
+        suites = suites.filter(s => s.id !== id); 
+        saveData(); 
+        renderSuites(); 
+    } 
+}
 
+// --- HISTORY & SETTINGS ---
 function renderHistory() {
     document.getElementById('history-list').innerHTML = history.map(h => `
-        <div class="card"><strong>${h.date} - ${h.suiteName}</strong><br><textarea readonly style="width:100%;height:60px;margin-top:10px">${h.report}</textarea></div>
+        <div class="card">
+            <strong>${h.date} - ${h.suiteName}</strong>
+            <textarea readonly style="width:100%;height:60px;margin-top:10px; border:1px solid #eee; padding:5px; font-size:12px">${h.report}</textarea>
+        </div>
     `).join('');
 }
 
 function exportData() {
     const blob = new Blob([JSON.stringify({ suites, history })], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "backup.json"; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "qa_backup.json"; a.click();
 }
 
 function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-        const d = JSON.parse(ev.target.result); suites = d.suites; history = d.history; saveData(); location.reload();
+        const data = JSON.parse(ev.target.result);
+        suites = data.suites; history = data.history; 
+        saveData(); 
+        location.reload();
     };
-    reader.readAsText(e.target.files[0]);
+    reader.readAsText(file);
 }
 
+// Initial Run
 showPicker();
