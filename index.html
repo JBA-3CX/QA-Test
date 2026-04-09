@@ -27,32 +27,42 @@
                     <p>No suites found. Go to "Manage Suites" to create or import one!</p>
                 </div>
             </div>
+            
             <div id="active-test-section" class="hidden">
-                <h2><button class="btn-outline" onclick="showPicker()">⬅ Back</button> Testing: <span id="active-suite-name"></span></h2>
-                <div class="card" id="test-container"></div>
-                <button class="btn-primary" style="width: 100%; padding: 15px;" onclick="generateReport()">Generate & Save JIRA Report</button>
+                <div class="header-row">
+                    <h2><button class="btn-outline" onclick="showPicker()">⬅ Back</button> <span id="active-suite-name"></span></h2>
+                    <button class="btn-primary" onclick="generateReport()">Generate JIRA Report</button>
+                </div>
+                <div id="test-container"></div>
                 <textarea id="jira-output" readonly></textarea>
             </div>
         </div>
 
         <div id="view-suites" class="view">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="header-row">
                 <h2>Test Suites</h2>
-                <div style="display: flex; gap: 10px;">
+                <div class="header-actions">
                     <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button>
-                    <button class="btn-outline" onclick="document.getElementById('import-suite-file').click()">📥 Import Suite</button>
+                    <button class="btn-outline" onclick="document.getElementById('import-suite-file').click()">📥 Import</button>
                     <input type="file" id="import-suite-file" accept=".json" style="display: none;" onchange="importSingleSuite(event)">
                 </div>
             </div>
+            
             <div id="suite-list"></div>
+
             <div class="card" id="suite-editor" style="display: none;">
-                <h3 id="editor-title" style="margin-bottom: 15px;">Suite Editor</h3>
+                <h3>Suite Builder</h3>
+                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g. Checkout Flow)" class="main-input">
                 <input type="hidden" id="edit-suite-id">
-                <input type="text" id="edit-suite-name" placeholder="Suite Name">
-                <textarea id="edit-suite-tests" style="height: 250px;" placeholder="Enter tests here..."></textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
-                    <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
+                
+                <div id="editor-items-list"></div>
+                
+                <div class="editor-footer">
+                    <button class="btn-outline" onclick="addLine()">+ Add Step</button>
+                    <div style="float: right;">
+                        <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
+                        <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -63,15 +73,15 @@
         </div>
 
         <div id="view-settings" class="view">
-            <h2>Settings & Global Backup</h2>
+            <h2>Settings & Backup</h2>
             <div class="card">
-                <h3>Export All Data</h3>
-                <button class="btn-primary" onclick="exportData()">Download Global Backup (.json)</button>
-            </div>
-            <div class="card">
-                <h3>Import Global Backup</h3>
+                <h3>Global Backup</h3>
+                <p>Download or restore all suites and history at once.</p>
+                <div style="margin-top:15px; display:flex; gap:10px;">
+                    <button class="btn-primary" onclick="exportData()">Export Everything</button>
+                    <button class="btn-outline" onclick="document.getElementById('import-file').click()">Restore Everything</button>
+                </div>
                 <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
-                <button class="btn-outline" onclick="document.getElementById('import-file').click()">Restore from File</button>
             </div>
         </div>
     </main>
