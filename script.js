@@ -1,8 +1,8 @@
 let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
 let history = JSON.parse(localStorage.getItem('qa_history')) || [];
+let editingTests = []; 
 let currentRunState = [];
 let activeSuiteId = null;
-let editingTests = []; // Temporary array for the editor
 
 function saveData() {
     localStorage.setItem('qa_suites', JSON.stringify(suites));
@@ -18,25 +18,23 @@ function switchView(viewId) {
     if (viewId === 'history') renderHistory();
 }
 
-// --- RUNNER VIEW ---
+// --- RUNNER ---
 function showPicker() {
     const grid = document.getElementById('run-suite-grid');
     grid.innerHTML = suites.map(s => `
-        <div class="suite-select-card" onclick="startRun('${s.id}')">
+        <div class="card" style="cursor:pointer; text-align:center" onclick="startRun('${s.id}')">
             <h3>${s.name}</h3>
-            <p>${s.tests.length} steps</p>
+            <p>${s.tests.length} Steps</p>
         </div>
     `).join('');
-    document.getElementById('run-empty-msg').style.display = suites.length === 0 ? 'block' : 'none';
+    document.getElementById('run-empty-msg').className = suites.length === 0 ? "empty-state" : "hidden";
 }
 
 function startRun(id) {
     activeSuiteId = id;
     const suite = suites.find(s => s.id === id);
     document.getElementById('active-suite-name').innerText = suite.name;
-    // Map existing structure to run state
     currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
-    
     document.getElementById('suite-picker-section').classList.add('hidden');
     document.getElementById('active-test-section').classList.remove('hidden');
     renderTestRun();
@@ -45,14 +43,15 @@ function startRun(id) {
 function renderTestRun() {
     const container = document.getElementById('test-container');
     container.innerHTML = currentRunState.map((test, index) => {
-        const isHeader = index < currentRunState.length - 1 && currentRunState[index+1].level > test.level;
+        const next = currentRunState[index + 1];
+        const isHeader = next && next.level > test.level;
         return `
             <div class="test-row level-${test.level} ${isHeader ? 'is-header' : ''}">
-                <span class="test-text">${test.text}</span>
-                <div class="test-actions ${isHeader ? 'hidden' : ''}">
+                <span>${test.text}</span>
+                <div class="test-controls ${isHeader ? 'hidden' : ''}">
                     <button class="status-btn p ${test.status==='Pass'?'active':''}" onclick="updateStatus(${index}, 'Pass')">Pass</button>
                     <button class="status-btn f ${test.status==='Fail'?'active':''}" onclick="updateStatus(${index}, 'Fail')">Fail</button>
-                    <input type="text" placeholder="Note..." value="${test.notes}" onchange="updateNotes(${index}, this.value)">
+                    <input type="text" placeholder="Note..." value="${test.notes}" onchange="currentRunState[${index}].notes=this.value">
                 </div>
             </div>
         `;
@@ -60,13 +59,27 @@ function renderTestRun() {
 }
 
 function updateStatus(i, s) { currentRunState[i].status = s; renderTestRun(); }
-function updateNotes(i, n) { currentRunState[i].notes = n; }
 
-// --- EDITOR VIEW (The User-Friendly Part) ---
+function generateReport() {
+    const suite = suites.find(s => s.id === activeSuiteId);
+    const fails = currentRunState.filter(s => s.status === 'Fail');
+    const passes = currentRunState.filter(s => s.status === 'Pass');
+    
+    let report = `h2. Regression: ${suite.name}\n\n`;
+    if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.text}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
+    report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.text}`).join('\n') + "\n{panel}";
+    
+    const out = document.getElementById('jira-output');
+    out.style.display = 'block'; out.value = report; out.select();
+    document.execCommand('copy');
+    history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report });
+    saveData(); alert("Copied to clipboard!");
+}
+
+// --- BUILDER ---
 function showSuiteEditor(id = null) {
-    const editor = document.getElementById('suite-editor');
-    editor.style.display = 'block';
-    if(id) {
+    document.getElementById('suite-editor').style.display = 'block';
+    if (id) {
         const s = suites.find(x => x.id === id);
         document.getElementById('edit-suite-id').value = s.id;
         document.getElementById('edit-suite-name').value = s.name;
@@ -74,37 +87,69 @@ function showSuiteEditor(id = null) {
     } else {
         document.getElementById('edit-suite-id').value = '';
         document.getElementById('edit-suite-name').value = '';
-        editingTests = [{ text: 'New Category', level: 0 }];
+        editingTests = [{ text: '', level: 0 }];
     }
-    renderEditorList();
+    renderEditor();
 }
 
-function renderEditorList() {
-    const list = document.getElementById('editor-items-list');
-    list.innerHTML = editingTests.map((t, i) => `
-        <div class="editor-item-row level-${t.level}">
-            <button class="btn-icon" onclick="changeLevel(${i}, -1)">◀</button>
-            <button class="btn-icon" onclick="changeLevel(${i}, 1)">▶</button>
-            <input type="text" value="${t.text}" onchange="editingTests[${i}].text = this.value">
-            <button class="btn-icon danger" onclick="removeLine(${i})">✕</button>
+function renderEditor() {
+    const container = document.getElementById('editor-items-list');
+    container.innerHTML = editingTests.map((t, i) => `
+        <div class="editor-line" style="--level: ${t.level}">
+            <button onclick="move(${i}, -1)">◀</button>
+            <button onclick="move(${i}, 1)">▶</button>
+            <input type="text" value="${t.text}" oninput="editingTests[${i}].text=this.value" style="flex:1">
+            <button onclick="editingTests.splice(${i},1);renderEditor()" style="color:red">✕</button>
         </div>
-    `).join('') + `<button class="btn-outline" onclick="addLine()">+ Add Step</button>`;
+    `).join('');
 }
 
-function addLine() { editingTests.push({ text: '', level: 0 }); renderEditorList(); }
-function removeLine(i) { editingTests.splice(i, 1); renderEditorList(); }
-function changeLevel(i, dir) {
-    editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir));
-    renderEditorList();
-}
+function move(i, dir) { editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir)); renderEditor(); }
+function addLine() { editingTests.push({ text: '', level: 0 }); renderEditor(); }
+function hideSuiteEditor() { document.getElementById('suite-editor').style.display = 'none'; }
 
 function saveSuite() {
-    const id = document.getElementById('edit-suite-id').value || Date.now().toString();
     const name = document.getElementById('edit-suite-name').value;
+    const id = document.getElementById('edit-suite-id').value || Date.now().toString();
     const idx = suites.findIndex(s => s.id === id);
-    if(idx > -1) suites[idx] = { id, name, tests: editingTests };
+    if (idx > -1) suites[idx] = { id, name, tests: editingTests };
     else suites.push({ id, name, tests: editingTests });
-    saveData(); switchView('suites');
+    saveData(); hideSuiteEditor(); renderSuites();
 }
 
-// ... Rest of global logic (Export/Import) stays similar ...
+function renderSuites() {
+    document.getElementById('suite-list').innerHTML = suites.map(s => `
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center">
+            <strong>${s.name}</strong>
+            <div>
+                <button onclick="editSuite('${s.id}')">Edit</button>
+                <button onclick="deleteSuite('${s.id}')" class="btn-danger">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+function editSuite(id) { showSuiteEditor(id); }
+function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
+
+// history and global settings logic
+function renderHistory() {
+    document.getElementById('history-list').innerHTML = history.map(h => `
+        <div class="card"><strong>${h.date} - ${h.suiteName}</strong><br><textarea readonly style="width:100%;height:60px;margin-top:10px">${h.report}</textarea></div>
+    `).join('');
+}
+
+function exportData() {
+    const blob = new Blob([JSON.stringify({ suites, history })], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "qa_backup.json"; a.click();
+}
+
+function importData(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const data = JSON.parse(ev.target.result);
+        suites = data.suites; history = data.history; saveData(); location.reload();
+    };
+    reader.readAsText(e.target.files[0]);
+}
+
+showPicker();
