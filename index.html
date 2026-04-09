@@ -20,55 +20,44 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        
         body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-main); }
         
-        /* Sidebar Navigation */
         nav { width: 250px; background-color: var(--nav-bg); color: white; display: flex; flex-direction: column; }
-        .nav-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; }
+        .nav-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .nav-items { flex-grow: 1; padding: 20px 0; }
         .nav-item { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s; opacity: 0.8; }
         .nav-item:hover, .nav-item.active { background-color: rgba(255,255,255,0.1); opacity: 1; }
         .nav-item.active { border-left: 4px solid var(--primary); }
 
-        /* Main Content Area */
         main { flex-grow: 1; padding: 30px; overflow-y: auto; }
         .view { display: none; max-width: 1000px; margin: 0 auto; }
         .view.active { display: block; }
         
-        h2 { margin-bottom: 20px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
+        h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; border: 1px solid var(--border); }
         
-        /* Buttons & Inputs */
-        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; font-size: 0.9rem; }
+        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn-primary { background-color: var(--primary); color: white; }
-        .btn-primary:hover { background-color: var(--primary-hover); }
         .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
-        .btn-outline:hover { background-color: var(--bg-color); }
         
-        select, input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; margin-bottom: 10px; }
-        textarea { resize: vertical; min-height: 100px; }
+        /* Suite Selection Grid */
+        .suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .suite-select-card { background: white; border: 2px solid var(--border); padding: 25px; border-radius: 8px; text-align: center; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
+        .suite-select-card:hover { border-color: var(--primary); transform: translateY(-3px); }
+        .suite-select-card h3 { color: var(--primary); margin-bottom: 5px; }
 
-        /* Test Runner Styles */
+        /* Runner Styles */
         .test-row { display: flex; flex-direction: column; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border); }
-        .test-row:last-child { border-bottom: none; }
-        .test-title { font-weight: 600; font-size: 1.05rem; }
-        .test-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        
+        .test-controls { display: flex; gap: 10px; flex-wrap: wrap; }
         .status-btn { background-color: var(--bg-color); color: var(--text-muted); border: 1px solid var(--border); }
         .status-btn[data-status="Pass"].active { background-color: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
         .status-btn[data-status="Fail"].active { background-color: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
         .status-btn[data-status="Skip"].active { background-color: var(--skip-bg); border-color: var(--skip-border); color: var(--skip-text); }
-
+        
+        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; }
         #jira-output { font-family: monospace; height: 150px; background: #f8f9fa; display: none; margin-top: 20px;}
-
-        /* Suite Manager Styles */
-        .suite-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid var(--border); margin-bottom: 10px; border-radius: 4px; background: white; }
-        .suite-actions button { margin-left: 5px; }
-
-        /* History Styles */
-        .history-item { border-left: 4px solid var(--primary); }
-        .history-meta { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px; }
+        
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -84,99 +73,93 @@
 
     <main>
         <div id="view-run" class="view active">
-            <h2>
-                Execute Test Run
-                <select id="suite-selector" style="width: auto; margin-bottom: 0;" onchange="loadSuite()"></select>
-            </h2>
-            <div class="card" id="test-container">
-                </div>
-            <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;" onclick="generateReport()">Generate & Save JIRA Report</button>
-            <textarea id="jira-output" readonly placeholder="Report will appear here..."></textarea>
+            <div id="suite-picker-section">
+                <h2>Select a Suite to Test</h2>
+                <div class="suite-grid" id="run-suite-grid"></div>
+            </div>
+
+            <div id="active-test-section" class="hidden">
+                <h2>
+                    <button class="btn-outline" onclick="showPicker()">⬅ Back</button>
+                    Testing: <span id="active-suite-name"></span>
+                </h2>
+                <div class="card" id="test-container"></div>
+                <button class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem;" onclick="generateReport()">Generate & Save JIRA Report</button>
+                <textarea id="jira-output" readonly></textarea>
+            </div>
         </div>
 
         <div id="view-suites" class="view">
             <h2>Test Suites <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button></h2>
-            <div id="suite-list">
-                </div>
-
-            <div class="card" id="suite-editor" style="display: none; margin-top: 20px; border-top: 4px solid var(--primary);">
-                <h3 style="margin-bottom: 15px;" id="editor-title">Create New Suite</h3>
+            <div id="suite-list"></div>
+            <div class="card" id="suite-editor" style="display: none; margin-top: 20px;">
+                <h3 id="editor-title">Create New Suite</h3>
                 <input type="hidden" id="edit-suite-id">
-                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Checkout Regression)">
-                <label style="font-size: 0.9rem; color: var(--text-muted);">Paste test cases below (one per line):</label>
-                <textarea id="edit-suite-tests" style="height: 250px;" placeholder="Test Case 1&#10;Test Case 2&#10;Test Case 3"></textarea>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
-                    <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
-                </div>
+                <input type="text" id="edit-suite-name" placeholder="Suite Name">
+                <textarea id="edit-suite-tests" style="height: 200px;" placeholder="Test Case 1&#10;Test Case 2"></textarea>
+                <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
+                <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
             </div>
         </div>
 
         <div id="view-history" class="view">
             <h2>Run History</h2>
-            <div id="history-list">
-                </div>
+            <div id="history-list"></div>
         </div>
     </main>
 
     <script>
-        // --- DATA MANAGEMENT (localStorage) ---
-        const DEFAULT_SUITE = {
+        let suites = JSON.parse(localStorage.getItem('qa_suites')) || [{
             id: 'default_1',
-            name: "Main Regression Example",
-            tests: [
-                "Buy: Hosting (With/Without)", "Buy: SC (Supports / Does not support hosting)", "Buy: Multiple years max limit",
-                "Upgrade & Renew: Remaining validity", "Upgrade & Renew: Unactivated License", "Upgrade & Renew: Prorated",
-                "Downgrade: To valid Edition", "Downgrade: To invalid Edition (Should not allow)", "Free: Renewing a 4SC Free",
-                "UI: Double check on mobile", "UI: Double check shopping cart ADD MORE"
-            ]
-        };
-
-        let suites = JSON.parse(localStorage.getItem('qa_suites')) || [DEFAULT_SUITE];
+            name: "Main Regression",
+            tests: ["Buy: Hosting", "Upgrade & Renew: Prorated", "UI: Mobile Check"]
+        }];
         let history = JSON.parse(localStorage.getItem('qa_history')) || [];
         let currentRunState = [];
+        let activeSuiteId = null;
 
         function saveData() {
             localStorage.setItem('qa_suites', JSON.stringify(suites));
             localStorage.setItem('qa_history', JSON.stringify(history));
         }
 
-        // --- NAVIGATION ---
         function switchView(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
             event.currentTarget.classList.add('active');
-
-            if (viewId === 'run') populateSuiteDropdown();
+            if (viewId === 'run') showPicker();
             if (viewId === 'suites') renderSuites();
             if (viewId === 'history') renderHistory();
         }
 
-        // --- VIEW: RUN TESTS ---
-        function populateSuiteDropdown() {
-            const select = document.getElementById('suite-selector');
-            select.innerHTML = suites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-            if (suites.length > 0) loadSuite();
+        // RUNNER LOGIC
+        function showPicker() {
+            document.getElementById('suite-picker-section').classList.remove('hidden');
+            document.getElementById('active-test-section').classList.add('hidden');
+            const grid = document.getElementById('run-suite-grid');
+            grid.innerHTML = suites.map(s => `
+                <div class="suite-select-card" onclick="startRun('${s.id}')">
+                    <h3>${s.name}</h3>
+                    <p style="color:var(--text-muted)">${s.tests.length} Cases</p>
+                </div>
+            `).join('');
         }
 
-        function loadSuite() {
-            const suiteId = document.getElementById('suite-selector').value;
-            const suite = suites.find(s => s.id === suiteId);
-            if (!suite) return;
-
+        function startRun(id) {
+            activeSuiteId = id;
+            const suite = suites.find(s => s.id === id);
+            document.getElementById('active-suite-name').innerText = suite.name;
             currentRunState = suite.tests.map(t => ({ name: t, status: 'Pending', notes: '' }));
-            renderTestRun();
+            
+            document.getElementById('suite-picker-section').classList.add('hidden');
+            document.getElementById('active-test-section').classList.remove('hidden');
             document.getElementById('jira-output').style.display = 'none';
+            renderTestRun();
         }
 
         function renderTestRun() {
             const container = document.getElementById('test-container');
-            if (currentRunState.length === 0) {
-                container.innerHTML = "<p style='color: var(--text-muted)'>No tests in this suite.</p>";
-                return;
-            }
-
             container.innerHTML = currentRunState.map((test, index) => `
                 <div class="test-row">
                     <div class="test-title">${test.name}</div>
@@ -184,171 +167,86 @@
                         <button class="status-btn ${test.status === 'Pass' ? 'active' : ''}" data-status="Pass" onclick="updateStatus(${index}, 'Pass')">Pass</button>
                         <button class="status-btn ${test.status === 'Fail' ? 'active' : ''}" data-status="Fail" onclick="updateStatus(${index}, 'Fail')">Fail</button>
                         <button class="status-btn ${test.status === 'Skip' ? 'active' : ''}" data-status="Skip" onclick="updateStatus(${index}, 'Skip')">Skip</button>
-                        <button class="status-btn" onclick="updateStatus(${index}, 'Pending')">Reset</button>
-                        <input type="text" placeholder="JIRA Bug ID or Notes..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom: 0; flex-grow: 1; min-width: 200px;">
+                        <input type="text" placeholder="Notes/Bug..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom:0; flex-grow:1;">
                     </div>
                 </div>
             `).join('');
         }
 
-        function updateStatus(index, status) {
-            currentRunState[index].status = status;
-            renderTestRun();
-        }
-
-        function updateNotes(index, notes) {
-            currentRunState[index].notes = notes;
-        }
+        function updateStatus(i, s) { currentRunState[i].status = s; renderTestRun(); }
+        function updateNotes(i, n) { currentRunState[i].notes = n; }
 
         function generateReport() {
-            const suiteName = suites.find(s => s.id === document.getElementById('suite-selector').value).name;
+            const suite = suites.find(s => s.id === activeSuiteId);
             const fails = currentRunState.filter(s => s.status === 'Fail');
             const passes = currentRunState.filter(s => s.status === 'Pass');
             const skips = currentRunState.filter(s => s.status === 'Skip');
 
-            let report = `h2. Regression Run: ${suiteName}\n\n`;
+            let report = `h2. Regression: ${suite.name}\n\n`;
+            if (fails.length) {
+                report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.name}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
+            }
+            report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.name}`).join('\n') + "\n{panel}";
 
-            if (fails.length > 0) {
-                report += "{panel:title=🚨 Failed Tests|borderStyle=solid|borderColor=#ff5630|titleBGColor=#ffebe6}\n";
-                fails.forEach(f => report += `* *${f.name}*\n  * Notes: ${f.notes || '_No notes_'}\n`);
-                report += "{panel}\n\n";
-            }
-            if (passes.length > 0) {
-                report += "{panel:title=✅ Passed Tests|borderStyle=solid|borderColor=#36b37e|titleBGColor=#e3fcef}\n";
-                passes.forEach(p => report += `* ${p.name} ${p.notes ? `-(Notes: ${p.notes})-` : ''}\n`);
-                report += "{panel}\n\n";
-            }
-            if (skips.length > 0) {
-                report += "{panel:title=⏭️ Skipped Tests|borderStyle=solid|borderColor=#6554c0|titleBGColor=#eae6ff}\n";
-                skips.forEach(s => report += `* ${s.name} ${s.notes ? `-(Reason: ${s.notes})-` : ''}\n`);
-                report += "{panel}\n";
-            }
-
-            // Display
-            const output = document.getElementById('jira-output');
-            output.style.display = 'block';
-            output.value = report;
-            output.select();
+            const out = document.getElementById('jira-output');
+            out.style.display = 'block'; out.value = report; out.select();
             document.execCommand('copy');
             
-            // Save to History
-            const runRecord = {
-                id: Date.now().toString(),
-                date: new Date().toLocaleString(),
-                suiteName: suiteName,
-                report: report
-            };
-            history.unshift(runRecord); // Add to beginning
+            history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report: report });
             saveData();
-
-            alert("Report copied to clipboard & saved to History!");
+            alert("Copied to clipboard!");
         }
 
-        // --- VIEW: MANAGE SUITES ---
+        // SUITE MANAGEMENT
         function renderSuites() {
             const list = document.getElementById('suite-list');
             list.innerHTML = suites.map(s => `
-                <div class="suite-item">
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div><strong>${s.name}</strong> (${s.tests.length} tests)</div>
                     <div>
-                        <strong>${s.name}</strong> <br>
-                        <small style="color: var(--text-muted)">${s.tests.length} test cases</small>
-                    </div>
-                    <div class="suite-actions">
                         <button class="btn-outline" onclick="editSuite('${s.id}')">Edit</button>
-                        <button class="btn-outline" style="color: var(--fail-border); border-color: var(--fail-border);" onclick="deleteSuite('${s.id}')">Delete</button>
+                        <button class="btn-outline" style="color:var(--fail-text)" onclick="deleteSuite('${s.id}')">Delete</button>
                     </div>
                 </div>
             `).join('');
         }
 
-        function showSuiteEditor() {
-            document.getElementById('suite-editor').style.display = 'block';
-            document.getElementById('edit-suite-id').value = '';
-            document.getElementById('edit-suite-name').value = '';
-            document.getElementById('edit-suite-tests').value = '';
-            document.getElementById('editor-title').innerText = "Create New Suite";
-        }
+        function showSuiteEditor() { document.getElementById('suite-editor').style.display = 'block'; }
+        function hideSuiteEditor() { document.getElementById('suite-editor').style.display = 'none'; }
 
-        function hideSuiteEditor() {
-            document.getElementById('suite-editor').style.display = 'none';
+        function saveSuite() {
+            const id = document.getElementById('edit-suite-id').value || Date.now().toString();
+            const name = document.getElementById('edit-suite-name').value;
+            const tests = document.getElementById('edit-suite-tests').value.split('\n').filter(t => t.trim());
+            
+            const idx = suites.findIndex(s => s.id === id);
+            if (idx > -1) suites[idx] = { id, name, tests };
+            else suites.push({ id, name, tests });
+            
+            saveData(); hideSuiteEditor(); renderSuites();
         }
 
         function editSuite(id) {
-            const suite = suites.find(s => s.id === id);
+            const s = suites.find(x => x.id === id);
+            document.getElementById('edit-suite-id').value = s.id;
+            document.getElementById('edit-suite-name').value = s.name;
+            document.getElementById('edit-suite-tests').value = s.tests.join('\n');
             showSuiteEditor();
-            document.getElementById('editor-title').innerText = "Edit Suite";
-            document.getElementById('edit-suite-id').value = suite.id;
-            document.getElementById('edit-suite-name').value = suite.name;
-            document.getElementById('edit-suite-tests').value = suite.tests.join('\n');
-            document.getElementById('suite-editor').scrollIntoView({behavior: "smooth"});
         }
 
-        function saveSuite() {
-            const id = document.getElementById('edit-suite-id').value;
-            const name = document.getElementById('edit-suite-name').value.trim();
-            const testsText = document.getElementById('edit-suite-tests').value;
-            const tests = testsText.split('\n').map(t => t.trim()).filter(t => t !== '');
+        function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
 
-            if (!name || tests.length === 0) return alert("Please provide a name and at least one test case.");
-
-            if (id) {
-                const index = suites.findIndex(s => s.id === id);
-                suites[index] = { id, name, tests };
-            } else {
-                suites.push({ id: Date.now().toString(), name, tests });
-            }
-
-            saveData();
-            hideSuiteEditor();
-            renderSuites();
-        }
-
-        function deleteSuite(id) {
-            if(confirm("Are you sure you want to delete this suite?")) {
-                suites = suites.filter(s => s.id !== id);
-                saveData();
-                renderSuites();
-            }
-        }
-
-        // --- VIEW: HISTORY ---
+        // HISTORY
         function renderHistory() {
-            const list = document.getElementById('history-list');
-            if(history.length === 0) {
-                list.innerHTML = "<p style='color: var(--text-muted)'>No run history yet.</p>";
-                return;
-            }
-
-            list.innerHTML = history.map(h => `
-                <div class="card history-item">
-                    <div class="history-meta">📅 ${h.date} | 📂 ${h.suiteName}</div>
-                    <textarea readonly style="height: 100px; font-family: monospace; font-size: 0.85rem; background: #f8f9fa;">${h.report}</textarea>
-                    <button class="btn-outline" onclick="copyText(this)">📋 Copy to Clipboard</button>
-                    <button class="btn-outline" style="color: var(--fail-border); border-color: var(--fail-border); margin-left: 10px;" onclick="deleteHistory('${h.id}')">Delete Record</button>
+            document.getElementById('history-list').innerHTML = history.map(h => `
+                <div class="card">
+                    <small>${h.date} - ${h.suiteName}</small>
+                    <textarea readonly style="height:60px; font-size:0.8rem;">${h.report}</textarea>
                 </div>
             `).join('');
         }
 
-        function deleteHistory(id) {
-            if(confirm("Delete this history record?")) {
-                history = history.filter(h => h.id !== id);
-                saveData();
-                renderHistory();
-            }
-        }
-
-        function copyText(btnElement) {
-            const textarea = btnElement.previousElementSibling;
-            textarea.select();
-            document.execCommand('copy');
-            const originalText = btnElement.innerText;
-            btnElement.innerText = "✅ Copied!";
-            setTimeout(() => btnElement.innerText = originalText, 2000);
-        }
-
-        // Init
-        populateSuiteDropdown();
-
+        showPicker();
     </script>
 </body>
 </html>
