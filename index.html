@@ -39,7 +39,6 @@
         button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s; white-space: nowrap; }
         .btn-primary { background-color: var(--primary); color: white; }
         .btn-outline { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
-        .btn-success { background-color: #36b37e; color: white; }
         .btn-danger { background-color: transparent; border: 1px solid var(--fail-border); color: var(--fail-text); }
         
         .suite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
@@ -57,7 +56,7 @@
         #jira-output { font-family: monospace; height: 150px; background: #f8f9fa; display: none; margin-top: 20px;}
         
         .hidden { display: none !important; }
-        .header-actions { display: flex; gap: 10px; }
+        .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -77,6 +76,9 @@
             <div id="suite-picker-section">
                 <h2>Select a Suite to Test</h2>
                 <div class="suite-grid" id="run-suite-grid"></div>
+                <div id="run-empty-msg" class="empty-state hidden">
+                    <p>No suites found. Go to "Manage Suites" to create or import one!</p>
+                </div>
             </div>
             <div id="active-test-section" class="hidden">
                 <h2><button class="btn-outline" onclick="showPicker()">⬅ Back</button> Testing: <span id="active-suite-name"></span></h2>
@@ -87,22 +89,24 @@
         </div>
 
         <div id="view-suites" class="view">
-            <h2>
-                Test Suites 
-                <div class="header-actions">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Test Suites</h2>
+                <div style="display: flex; gap: 10px;">
                     <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button>
                     <button class="btn-outline" onclick="document.getElementById('import-suite-file').click()">📥 Import Suite</button>
                     <input type="file" id="import-suite-file" accept=".json" style="display: none;" onchange="importSingleSuite(event)">
                 </div>
-            </h2>
+            </div>
             <div id="suite-list"></div>
             <div class="card" id="suite-editor" style="display: none;">
-                <h3 id="editor-title">Suite Editor</h3>
+                <h3 id="editor-title" style="margin-bottom: 15px;">Suite Editor</h3>
                 <input type="hidden" id="edit-suite-id">
-                <input type="text" id="edit-suite-name" placeholder="Suite Name">
-                <textarea id="edit-suite-tests" style="height: 200px;" placeholder="One test per line..."></textarea>
-                <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
-                <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
+                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Billing Checkout)">
+                <textarea id="edit-suite-tests" style="height: 250px;" placeholder="Enter tests here, one per line..."></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
+                    <button class="btn-outline" onclick="hideSuiteEditor()">Cancel</button>
+                </div>
             </div>
         </div>
 
@@ -112,27 +116,24 @@
         </div>
 
         <div id="view-settings" class="view">
-            <h2>Settings & Backup (Global)</h2>
+            <h2>Settings & Global Backup</h2>
             <div class="card">
-                <h3>Global Export</h3>
-                <p style="margin-bottom: 15px; color: var(--text-muted);">Back up EVERYTHING (all suites + all history) to one file.</p>
+                <h3>Export All Data</h3>
+                <p style="margin-bottom: 15px; color: var(--text-muted);">Downloads all suites and your entire run history into one file.</p>
                 <button class="btn-primary" onclick="exportData()">Download Global Backup (.json)</button>
             </div>
             <div class="card">
-                <h3>Global Import</h3>
-                <p style="margin-bottom: 15px; color: var(--text-muted);">Warning: This will overwrite your current database with the backup file.</p>
+                <h3>Import Global Backup</h3>
+                <p style="margin-bottom: 15px; color: var(--text-muted);">Warning: This will replace all current data.</p>
                 <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
-                <button class="btn-outline" onclick="document.getElementById('import-file').click()">Restore Global Backup</button>
+                <button class="btn-outline" onclick="document.getElementById('import-file').click()">Restore from File</button>
             </div>
         </div>
     </main>
 
     <script>
-        let suites = JSON.parse(localStorage.getItem('qa_suites')) || [{
-            id: 'default_1',
-            name: "Main Regression",
-            tests: ["Buy: Hosting", "Upgrade SC", "UI Check"]
-        }];
+        // Initialize from LocalStorage or empty arrays
+        let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
         let history = JSON.parse(localStorage.getItem('qa_history')) || [];
         let currentRunState = [];
         let activeSuiteId = null;
@@ -147,22 +148,31 @@
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
             if (window.event) event.currentTarget.classList.add('active');
+            
             if (viewId === 'run') showPicker();
             if (viewId === 'suites') renderSuites();
             if (viewId === 'history') renderHistory();
         }
 
-        // RUNNER
+        // --- RUNNER LOGIC ---
         function showPicker() {
             document.getElementById('suite-picker-section').classList.remove('hidden');
             document.getElementById('active-test-section').classList.add('hidden');
             const grid = document.getElementById('run-suite-grid');
-            grid.innerHTML = suites.map(s => `
-                <div class="suite-select-card" onclick="startRun('${s.id}')">
-                    <h3>${s.name}</h3>
-                    <p>${s.tests.length} Cases</p>
-                </div>
-            `).join('');
+            const emptyMsg = document.getElementById('run-empty-msg');
+            
+            if (suites.length === 0) {
+                grid.innerHTML = "";
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                grid.innerHTML = suites.map(s => `
+                    <div class="suite-select-card" onclick="startRun('${s.id}')">
+                        <h3 style="color: var(--primary); margin-bottom: 5px;">${s.name}</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">${s.tests.length} Cases</p>
+                    </div>
+                `).join('');
+            }
         }
 
         function startRun(id) {
@@ -180,12 +190,12 @@
             const container = document.getElementById('test-container');
             container.innerHTML = currentRunState.map((test, index) => `
                 <div class="test-row">
-                    <div class="test-title">${test.name}</div>
+                    <div style="font-weight: 600; font-size: 1.05rem;">${test.name}</div>
                     <div class="test-controls">
                         <button class="status-btn ${test.status === 'Pass' ? 'active' : ''}" data-status="Pass" onclick="updateStatus(${index}, 'Pass')">Pass</button>
                         <button class="status-btn ${test.status === 'Fail' ? 'active' : ''}" data-status="Fail" onclick="updateStatus(${index}, 'Fail')">Fail</button>
                         <button class="status-btn ${test.status === 'Skip' ? 'active' : ''}" data-status="Skip" onclick="updateStatus(${index}, 'Skip')">Skip</button>
-                        <input type="text" placeholder="Notes..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom:0; flex-grow:1;">
+                        <input type="text" placeholder="Add Note / JIRA Key..." value="${test.notes}" onchange="updateNotes(${index}, this.value)" style="margin-bottom:0; flex-grow:1; min-width: 180px;">
                     </div>
                 </div>
             `).join('');
@@ -200,9 +210,11 @@
             const passes = currentRunState.filter(s => s.status === 'Pass');
             const skips = currentRunState.filter(s => s.status === 'Skip');
 
-            let report = `h2. Regression: ${suite.name}\n\n`;
-            if (fails.length) report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6}\n" + fails.map(f => `* *${f.name}*: ${f.notes}`).join('\n') + "\n{panel}\n\n";
-            report += "{panel:title=✅ Passes|titleBGColor=#e3fcef}\n" + passes.map(p => `* ${p.name}`).join('\n') + "\n{panel}";
+            let report = `h2. Regression Run: ${suite.name}\n\n`;
+            if (fails.length) {
+                report += "{panel:title=🚨 Fails|titleBGColor=#ffebe6|borderColor=#ff5630}\n" + fails.map(f => `* *${f.name}*: ${f.notes || 'No notes'}`).join('\n') + "\n{panel}\n\n";
+            }
+            report += "{panel:title=✅ Passes|titleBGColor=#e3fcef|borderColor=#36b37e}\n" + passes.map(p => `* ${p.name} ${p.notes ? `(${p.notes})` : ''}`).join('\n') + "\n{panel}";
 
             const out = document.getElementById('jira-output');
             out.style.display = 'block'; out.value = report; out.select();
@@ -210,16 +222,23 @@
             
             history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report: report });
             saveData();
-            alert("Report saved and copied!");
+            alert("Report copied to clipboard and saved to History!");
         }
 
-        // SUITE MGMT
+        // --- SUITE MANAGEMENT ---
         function renderSuites() {
             const list = document.getElementById('suite-list');
+            if (suites.length === 0) {
+                list.innerHTML = `<div class="empty-state">No suites created yet. Use the buttons above to get started.</div>`;
+                return;
+            }
             list.innerHTML = suites.map(s => `
                 <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
-                    <div><strong>${s.name}</strong> (${s.tests.length} tests)</div>
-                    <div style="display:flex; gap:5px;">
+                    <div>
+                        <strong>${s.name}</strong> <br>
+                        <small style="color: var(--text-muted)">${s.tests.length} tests</small>
+                    </div>
+                    <div style="display:flex; gap:8px;">
                         <button class="btn-outline" onclick="editSuite('${s.id}')">Edit</button>
                         <button class="btn-outline" onclick="exportSingleSuite('${s.id}')">📤 Export</button>
                         <button class="btn-danger" onclick="deleteSuite('${s.id}')">Delete</button>
@@ -227,6 +246,41 @@
                 </div>
             `).join('');
         }
+
+        function showSuiteEditor() { 
+            document.getElementById('suite-editor').style.display = 'block'; 
+            document.getElementById('edit-suite-id').value = '';
+            document.getElementById('edit-suite-name').value = '';
+            document.getElementById('edit-suite-tests').value = '';
+            document.getElementById('editor-title').innerText = "Create New Suite";
+        }
+        function hideSuiteEditor() { document.getElementById('suite-editor').style.display = 'none'; }
+
+        function saveSuite() {
+            const id = document.getElementById('edit-suite-id').value || Date.now().toString();
+            const name = document.getElementById('edit-suite-name').value.trim();
+            const tests = document.getElementById('edit-suite-tests').value.split('\n').filter(t => t.trim());
+            
+            if (!name) return alert("Please enter a suite name.");
+            if (tests.length === 0) return alert("Please enter at least one test case.");
+
+            const idx = suites.findIndex(s => s.id === id);
+            if (idx > -1) suites[idx] = { id, name, tests };
+            else suites.push({ id, name, tests });
+            
+            saveData(); hideSuiteEditor(); renderSuites();
+        }
+
+        function editSuite(id) {
+            const s = suites.find(x => x.id === id);
+            document.getElementById('edit-suite-id').value = s.id;
+            document.getElementById('edit-suite-name').value = s.name;
+            document.getElementById('edit-suite-tests').value = s.tests.join('\n');
+            document.getElementById('editor-title').innerText = "Edit Suite";
+            showSuiteEditor();
+        }
+
+        function deleteSuite(id) { if(confirm("Permanently delete this suite?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
 
         function exportSingleSuite(id) {
             const suite = suites.find(s => s.id === id);
@@ -248,74 +302,54 @@
                     const imported = JSON.parse(e.target.result);
                     if (imported.type === 'single_suite' && imported.suite) {
                         let newSuite = imported.suite;
-                        newSuite.id = Date.now().toString(); // New ID to prevent collision
-                        // Check for name collision
-                        if (suites.some(s => s.name === newSuite.name)) {
-                            newSuite.name += " (Imported)";
-                        }
+                        newSuite.id = Date.now().toString();
+                        if (suites.some(s => s.name === newSuite.name)) newSuite.name += " (Imported)";
                         suites.push(newSuite);
-                        saveData();
-                        renderSuites();
-                        alert(`Suite "${newSuite.name}" imported successfully!`);
-                    } else {
-                        alert("Invalid file format. Please use a file exported from this tool.");
-                    }
+                        saveData(); renderSuites();
+                    } else { alert("Invalid suite file."); }
                 } catch (err) { alert("Error reading file."); }
-                event.target.value = ''; // Reset input
+                event.target.value = '';
             };
             reader.readAsText(file);
         }
 
-        function showSuiteEditor() { 
-            document.getElementById('suite-editor').style.display = 'block'; 
-            document.getElementById('edit-suite-id').value = '';
-            document.getElementById('edit-suite-name').value = '';
-            document.getElementById('edit-suite-tests').value = '';
-        }
-        function hideSuiteEditor() { document.getElementById('suite-editor').style.display = 'none'; }
-
-        function saveSuite() {
-            const id = document.getElementById('edit-suite-id').value || Date.now().toString();
-            const name = document.getElementById('edit-suite-name').value;
-            const tests = document.getElementById('edit-suite-tests').value.split('\n').filter(t => t.trim());
-            const idx = suites.findIndex(s => s.id === id);
-            if (idx > -1) suites[idx] = { id, name, tests };
-            else suites.push({ id, name, tests });
-            saveData(); hideSuiteEditor(); renderSuites();
-        }
-
-        function editSuite(id) {
-            const s = suites.find(x => x.id === id);
-            document.getElementById('edit-suite-id').value = s.id;
-            document.getElementById('edit-suite-name').value = s.name;
-            document.getElementById('edit-suite-tests').value = s.tests.join('\n');
-            showSuiteEditor();
-        }
-
-        function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
-
-        // HISTORY
+        // --- HISTORY LOGIC ---
         function renderHistory() {
-            document.getElementById('history-list').innerHTML = history.map(h => `
+            const list = document.getElementById('history-list');
+            if (history.length === 0) {
+                list.innerHTML = `<div class="empty-state">No history recorded yet.</div>`;
+                return;
+            }
+            list.innerHTML = history.map(h => `
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
                         <strong>${h.date} - ${h.suiteName}</strong>
-                        <button class="btn-danger" style="padding:4px 8px" onclick="deleteHistory(${h.id})">Delete</button>
+                        <button class="btn-danger" style="padding:4px 8px; font-size: 0.8rem;" onclick="deleteHistory(${h.id})">Delete</button>
                     </div>
-                    <textarea readonly style="height:80px; font-size:0.85rem; background:#fafafa">${h.report}</textarea>
+                    <textarea readonly style="height:80px; font-size:0.8rem; background:#fafafa; border: 1px solid #eee;">${h.report}</textarea>
+                    <button class="btn-outline" style="margin-top:5px; font-size:0.8rem" onclick="copyFromHistory(this)">Copy Report</button>
                 </div>
             `).join('');
         }
-        function deleteHistory(id) { if(confirm("Delete?")) { history = history.filter(h => h.id !== id); saveData(); renderHistory(); } }
 
-        // GLOBAL SETTINGS
+        function deleteHistory(id) { if(confirm("Delete this history record?")) { history = history.filter(h => h.id !== id); saveData(); renderHistory(); } }
+        
+        function copyFromHistory(btn) {
+            const txt = btn.previousElementSibling;
+            txt.select();
+            document.execCommand('copy');
+            btn.innerText = "✅ Copied!";
+            setTimeout(() => btn.innerText = "Copy Report", 2000);
+        }
+
+        // --- GLOBAL SETTINGS LOGIC ---
         function exportData() {
             const data = { type: 'global_backup', suites, history };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `full_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `qa_hub_full_backup_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
         }
 
@@ -327,18 +361,18 @@
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (imported.type === 'global_backup') {
-                        if (confirm("OVERWRITE EVERYTHING? This cannot be undone.")) {
-                            suites = imported.suites;
-                            history = imported.history;
-                            saveData();
-                            location.reload();
+                        if (confirm("This will replace all current suites and history. Continue?")) {
+                            suites = imported.suites || [];
+                            history = imported.history || [];
+                            saveData(); location.reload();
                         }
-                    } else { alert("Invalid backup format."); }
+                    } else { alert("Invalid global backup file."); }
                 } catch (err) { alert("Error reading file."); }
             };
             reader.readAsText(file);
         }
 
+        // Initialize view
         showPicker();
     </script>
 </body>
