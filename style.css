@@ -53,3 +53,31 @@ main { flex: 1; padding: 40px; overflow-y: auto; }
 .btn-outline { background: white; border: 1px solid var(--border); padding: 10px 20px; border-radius: 4px; cursor: pointer; }
 #jira-output { width: 100%; height: 120px; margin-top: 20px; font-family: monospace; padding: 10px; }
 .hidden { display: none !important; }
+
+/* Add these to your style.css */
+
+.grab-handle {
+    cursor: grab;
+    color: #97a0af;
+    padding: 5px;
+    font-size: 18px;
+    user-select: none;
+    display: flex;
+    align-items: center;
+}
+
+.grab-handle:active {
+    cursor: grabbing;
+}
+
+.editor-line.dragging {
+    opacity: 0.5;
+    background: #ebecf0;
+    border: 1px dashed var(--primary);
+}
+
+/* Optional: Smooth transition for moving rows */
+#editor-items-list {
+    display: flex;
+    flex-direction: column;
+}
