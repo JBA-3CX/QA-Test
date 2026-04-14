@@ -113,7 +113,7 @@ function generateReport() {
     alert("JIRA Report copied to clipboard!");
 }
 
-// --- BUILDER LOGIC (DRAG & DROP + TAB OPTIMIZED) ---
+// --- BUILDER LOGIC (DRAG & DROP + TAB + CTRL ARROWS) ---
 function showSuiteEditor(id = null) {
     document.getElementById('suite-editor').style.display = 'block';
     if (id && typeof id === 'string') {
@@ -140,7 +140,6 @@ function renderEditor() {
         row.draggable = true;
         row.dataset.index = i;
 
-        // tabindex="-1" hides buttons from the Tab key cycle
         row.innerHTML = `
             <div class="grab-handle" title="Drag to reorder">⠿</div>
             <div style="display:flex; gap:2px;">
@@ -151,14 +150,34 @@ function renderEditor() {
             <button tabindex="-1" onclick="editingTests.splice(${i},1);renderEditor()" style="border:none; background:none; color:red; cursor:pointer; padding:5px;">✕</button>
         `;
 
-        // Shortcut: Enter to add new line
-        row.querySelector('input').addEventListener('keydown', (e) => {
+        const input = row.querySelector('input');
+
+        // SHORTCUTS
+        input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 addLine();
                 setTimeout(() => {
                     const inputs = document.querySelectorAll('.editor-input');
                     inputs[inputs.length - 1].focus();
+                }, 10);
+            }
+
+            if (e.ctrlKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                moveDepth(i, 1);
+                setTimeout(() => {
+                    const inputs = document.querySelectorAll('.editor-input');
+                    inputs[i].focus();
+                }, 10);
+            }
+
+            if (e.ctrlKey && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                moveDepth(i, -1);
+                setTimeout(() => {
+                    const inputs = document.querySelectorAll('.editor-input');
+                    inputs[i].focus();
                 }, 10);
             }
         });
