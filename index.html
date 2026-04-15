@@ -2,52 +2,66 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QA Regression Hub</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <nav>
         <div class="nav-header">🧪 QA Hub</div>
-        <div class="nav-item active" onclick="switchView('run')">▶️ Run Tests</div>
-        <div class="nav-item" onclick="switchView('suites')">📁 Manage Suites</div>
-        <div class="nav-item" onclick="switchView('history')">🕰️ History</div>
-        <div class="nav-item" onclick="switchView('settings')">⚙️ Settings</div>
+        <div class="nav-items">
+            <div class="nav-item active" onclick="switchView('run')">▶️ Run Tests</div>
+            <div class="nav-item" onclick="switchView('suites')">📁 Manage Suites</div>
+            <div class="nav-item" onclick="switchView('history')">🕰️ History</div>
+            <div class="nav-item" onclick="switchView('settings')">⚙️ Settings</div>
+        </div>
     </nav>
 
     <main>
         <div id="view-run" class="view active">
             <div id="suite-picker-section">
-                <h2>Choose a Suite</h2>
-                <div class="suite-grid" id="run-suite-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;"></div>
-                <p id="run-empty-msg" class="hidden" style="margin-top:20px; color:#6b778c;">No suites created yet.</p>
+                <h2>Select a Suite to Test</h2>
+                <div class="suite-grid" id="run-suite-grid"></div>
+                <div id="run-empty-msg" class="empty-state hidden" style="text-align: center; padding: 40px; color: #6b778c;">
+                    <p>No suites found. Go to "Manage Suites" to create or import one!</p>
+                </div>
             </div>
+            
             <div id="active-test-section" class="hidden">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
-                    <h2><span id="active-suite-name"></span></h2>
-                    <div>
-                        <button class="btn-outline" onclick="showPicker()" style="margin-right:10px">Back</button>
-                        <button class="btn-primary" onclick="generateReport()">Copy JIRA Report</button>
-                    </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2><button class="btn-outline" onclick="showPicker()" style="margin-right: 10px;">⬅ Back</button> <span id="active-suite-name"></span></h2>
+                    <button class="btn-primary" onclick="generateReport()">Copy JIRA Report</button>
                 </div>
                 <div id="test-container"></div>
-                <textarea id="jira-output" readonly></textarea>
+                <textarea id="jira-output" readonly style="display:none; width: 100%; margin-top: 20px; font-family: monospace;"></textarea>
             </div>
         </div>
 
         <div id="view-suites" class="view">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
-                <h2>Manage Suites</h2>
-                <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Test Suites</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button>
+                    <button class="btn-outline" onclick="document.getElementById('import-single-file').click()">📥 Import Suite</button>
+                    <input type="file" id="import-single-file" accept=".json" style="display: none;" onchange="importSingleSuite(event)">
+                </div>
             </div>
+            
             <div id="suite-list"></div>
-            <div class="card" id="suite-editor" style="display:none; margin-top:20px">
-                <input type="text" id="edit-suite-name" class="editor-input" style="font-size:18px; font-weight:bold; margin-bottom:20px" placeholder="Suite Name">
+
+            <div class="card" id="suite-editor" style="display: none; margin-top: 20px;">
+                <h3 id="editor-title" style="margin-bottom: 15px;">Suite Builder</h3>
+                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Checkout Flow)" style="width: 100%; padding: 12px; font-size: 1.1rem; margin-bottom: 20px; border: 1px solid #dfe1e6; border-radius: 4px;">
                 <input type="hidden" id="edit-suite-id">
-                <div id="editor-items-list"></div>
-                <div style="margin-top:20px; display:flex; justify-content:space-between">
+                
+                <div id="editor-items-list" style="margin-bottom: 20px;">
+                    </div>
+                
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid #dfe1e6; padding-top: 20px;">
                     <button class="btn-outline" onclick="addLine()">+ Add Step</button>
-                    <div>
-                        <button class="btn-primary" onclick="saveSuite()" style="margin-right:10px">Save Suite</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
                         <button class="btn-outline" onclick="document.getElementById('suite-editor').style.display='none'">Cancel</button>
                     </div>
                 </div>
@@ -55,21 +69,24 @@
         </div>
 
         <div id="view-history" class="view">
-            <h2>History</h2>
+            <h2>Run History</h2>
             <div id="history-list"></div>
         </div>
 
         <div id="view-settings" class="view">
-            <h2>Settings</h2>
-            <div class="card" style="margin-top:20px">
-                <h3>Backups</h3>
-                <p style="margin:10px 0; font-size:14px; color:#6b778c">Backup your data to a local file.</p>
-                <button class="btn-primary" onclick="exportData()" style="margin-right:10px">Export All</button>
-                <button class="btn-outline" onclick="document.getElementById('import-file').click()">Import Backup</button>
-                <input type="file" id="import-file" class="hidden" onchange="importData(event)">
+            <h2>Global Settings</h2>
+            <div class="card">
+                <h3>Global Backup</h3>
+                <p style="color: #6b778c; margin-bottom: 15px;">Download or restore your entire database (all suites and all history).</p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="exportData()">Export Everything</button>
+                    <button class="btn-outline" onclick="document.getElementById('import-global-file').click()">Restore Everything</button>
+                </div>
+                <input type="file" id="import-global-file" accept=".json" style="display: none;" onchange="importData(event)">
             </div>
         </div>
     </main>
+
     <script src="script.js"></script>
 </body>
 </html>
