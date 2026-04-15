@@ -2,7 +2,7 @@
 let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
 let history = JSON.parse(localStorage.getItem('qa_history')) || [];
 let editingTests = []; 
-let undoStack = []; // For Ctrl+Z
+let undoStack = []; 
 let currentRunState = [];
 let activeSuiteId = null;
 let dragSrcIndex = null;
@@ -12,10 +12,9 @@ function saveData() {
     localStorage.setItem('qa_history', JSON.stringify(history));
 }
 
-// Save current state to undo stack before a change
 function pushUndo() {
     undoStack.push(JSON.parse(JSON.stringify(editingTests)));
-    if (undoStack.length > 30) undoStack.shift(); // Keep last 30 actions
+    if (undoStack.length > 30) undoStack.shift();
 }
 
 // --- NAVIGATION ---
@@ -65,7 +64,7 @@ function renderTestRun() {
             <div class="test-controls">
                 <button class="status-btn p ${test.status==='Pass'?'active':''}" onclick="updateStatus(${index}, 'Pass')">Pass</button>
                 <button class="status-btn f ${test.status==='Fail'?'active':''}" onclick="updateStatus(${index}, 'Fail')">Fail</button>
-                <input type="text" class="note-input" placeholder="Note..." value="${test.notes || ''}" onchange="currentRunState[${index}].notes=this.value">
+                <input type="text" class="note-input" placeholder="Note..." value="${test.notes}" onchange="currentRunState[${index}].notes=this.value">
             </div>
         </div>
     `).join('');
@@ -87,7 +86,7 @@ function generateReport() {
     saveData(); alert("JIRA Report copied!");
 }
 
-// --- BUILDER LOGIC (DRAG & DROP + KEYBOARD + UNDO) ---
+// --- BUILDER LOGIC ---
 function showSuiteEditor(id = null) {
     document.getElementById('suite-editor').style.display = 'block';
     undoStack = []; 
@@ -107,14 +106,12 @@ function showSuiteEditor(id = null) {
 function renderEditor(focusIndex = null) {
     const container = document.getElementById('editor-items-list');
     container.innerHTML = ''; 
-
     editingTests.forEach((t, i) => {
         const row = document.createElement('div');
         row.className = 'editor-line';
         row.style.marginLeft = `${t.level * 30}px`;
         row.draggable = true;
         row.dataset.index = i;
-
         row.innerHTML = `
             <div class="grab-handle">⠿</div>
             <div style="display:flex; gap:2px;">
@@ -124,44 +121,25 @@ function renderEditor(focusIndex = null) {
             <input type="text" class="editor-input" value="${t.text}" oninput="editingTests[${i}].text=this.value">
             <button tabindex="-1" onclick="deleteLine(${i})" style="border:none; background:none; color:red; cursor:pointer; padding:5px;">✕</button>
         `;
-
         const input = row.querySelector('input');
-
         input.addEventListener('keydown', (e) => {
-            // Undo: Ctrl + Z
             if (e.ctrlKey && e.key === 'z') {
                 e.preventDefault();
-                if (undoStack.length > 0) {
-                    editingTests = undoStack.pop();
-                    renderEditor(i);
-                }
+                if (undoStack.length > 0) { editingTests = undoStack.pop(); renderEditor(i); }
             }
-            // Add Line: Enter
             if (e.key === 'Enter') {
                 e.preventDefault();
                 pushUndo();
                 editingTests.splice(i + 1, 0, { text: '', level: t.level });
                 renderEditor(i + 1);
             }
-            // Indent: Ctrl + Right
-            if (e.ctrlKey && e.key === 'ArrowRight') {
-                e.preventDefault();
-                pushUndo();
-                moveDepth(i, 1, true);
-            }
-            // Outdent: Ctrl + Left
-            if (e.ctrlKey && e.key === 'ArrowLeft') {
-                e.preventDefault();
-                pushUndo();
-                moveDepth(i, -1, true);
-            }
+            if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); pushUndo(); moveDepth(i, 1, true); }
+            if (e.ctrlKey && e.key === 'ArrowLeft') { e.preventDefault(); pushUndo(); moveDepth(i, -1, true); }
         });
-
         row.addEventListener('dragstart', handleDragStart);
         row.addEventListener('dragover', handleDragOver);
         row.addEventListener('drop', handleDrop);
         row.addEventListener('dragend', handleDragEnd);
-
         container.appendChild(row);
         if (focusIndex === i) input.focus();
     });
@@ -179,20 +157,12 @@ function handleDrop(e) {
     }
 }
 function handleDragEnd() { this.classList.remove('dragging'); }
-
 function moveDepth(i, dir, keepFocus = false) { 
     editingTests[i].level = Math.max(0, Math.min(3, editingTests[i].level + dir)); 
     renderEditor(keepFocus ? i : null); 
 }
-
 function deleteLine(i) { pushUndo(); editingTests.splice(i, 1); renderEditor(); }
-
-function addLine() { 
-    pushUndo();
-    const lastLevel = editingTests.length > 0 ? editingTests[editingTests.length-1].level : 0;
-    editingTests.push({ text: '', level: lastLevel }); 
-    renderEditor(editingTests.length - 1); 
-}
+function addLine() { pushUndo(); editingTests.push({ text: '', level: 0 }); renderEditor(editingTests.length - 1); }
 
 function saveSuite() {
     const name = document.getElementById('edit-suite-name').value;
@@ -210,6 +180,7 @@ function renderSuites() {
             <strong>${s.name}</strong>
             <div>
                 <button class="status-btn" onclick="showSuiteEditor('${s.id}')">Edit</button>
+                <button class="status-btn" onclick="exportSingleSuite('${s.id}')">Export</button>
                 <button class="status-btn" style="color:red" onclick="deleteSuite('${s.id}')">Delete</button>
             </div>
         </div>
@@ -218,6 +189,30 @@ function renderSuites() {
 
 function deleteSuite(id) { if(confirm("Delete?")) { suites = suites.filter(s => s.id !== id); saveData(); renderSuites(); } }
 
+// --- INDIVIDUAL IMPORT/EXPORT ---
+function exportSingleSuite(id) {
+    const suite = suites.find(s => s.id === id);
+    const blob = new Blob([JSON.stringify({ type: 'single_suite', suite })], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+    a.download = `suite_${suite.name.replace(/\s+/g, '_')}.json`; a.click();
+}
+
+function importSingleSuite(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const d = JSON.parse(ev.target.result);
+        if (d.type === 'single_suite') {
+            const newSuite = d.suite;
+            newSuite.id = Date.now().toString(); // New ID to prevent overlap
+            if(suites.some(s => s.name === newSuite.name)) newSuite.name += " (Imported)";
+            suites.push(newSuite);
+            saveData(); renderSuites();
+        } else { alert("Not a valid single suite file."); }
+    };
+    reader.readAsText(e.target.files[0]);
+}
+
+// --- GLOBAL SETTINGS ---
 function renderHistory() {
     document.getElementById('history-list').innerHTML = history.map(h => `
         <div class="card"><strong>${h.date} - ${h.suiteName}</strong><br><textarea readonly style="width:100%;height:60px;margin-top:10px">${h.report}</textarea></div>
@@ -226,7 +221,7 @@ function renderHistory() {
 
 function exportData() {
     const blob = new Blob([JSON.stringify({ suites, history })], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "backup.json"; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "global_backup.json"; a.click();
 }
 
 function importData(e) {
