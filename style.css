@@ -1,83 +1,144 @@
 :root {
     --primary: #0052cc;
-    --bg-color: #f4f5f7;
-    --nav-bg: #172b4d;
-    --text-main: #172b4d;
+    --primary-light: #deebff;
+    --bg-main: #f4f5f7;
+    --card-bg: #ffffff;
+    --text-dark: #172b4d;
+    --text-light: #6b778c;
+    --danger: #ff5630;
+    --success: #36b37e;
     --border: #dfe1e6;
+    --radius: 10px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
-body { display: flex; height: 100vh; background: var(--bg-color); color: var(--text-main); }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
 
-nav { width: 240px; background: var(--nav-bg); color: white; flex-shrink: 0; }
-.nav-header { padding: 25px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.nav-item { padding: 15px 25px; cursor: pointer; opacity: 0.7; }
-.nav-item.active { opacity: 1; background: rgba(255,255,255,0.1); border-left: 4px solid var(--primary); }
+body { 
+    display: flex; 
+    height: 100vh; 
+    background: var(--bg-main); 
+    color: var(--text-dark);
+}
 
-main { flex: 1; padding: 40px; overflow-y: auto; }
-.view { display: none; max-width: 1000px; margin: 0 auto; }
+/* Sidebar - Deep & Focused */
+nav { 
+    width: 260px; 
+    background: #0747A6; /* Deeper Professional Blue */
+    color: white; 
+    display: flex; 
+    flex-direction: column;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+
+.nav-header { 
+    padding: 30px 20px; 
+    font-size: 1.4rem; 
+    font-weight: 800; 
+    letter-spacing: -1px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.nav-item { 
+    padding: 14px 20px; 
+    cursor: pointer; 
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+}
+
+.nav-item:hover { background: rgba(255,255,255,0.05); }
+.nav-item.active { 
+    background: rgba(255,255,255,0.1); 
+    border-left: 5px solid #00B8D9; /* Cyan highlight */
+}
+
+/* Main Area */
+main { flex: 1; padding: 40px; overflow-y: auto; scroll-behavior: smooth; }
+.view { display: none; max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s ease; }
 .view.active { display: block; }
-.card { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; }
 
-/* The Fix: Cleaner Rows & Indentation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Cards & Rows */
+.card { 
+    background: var(--card-bg); 
+    padding: 24px; 
+    border-radius: var(--radius); 
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px rgba(9, 30, 66, 0.08);
+    margin-bottom: 20px;
+}
+
 .test-row { 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    padding: 10px 15px; 
+    padding: 16px 20px; 
     background: white; 
-    margin-bottom: 4px; 
+    margin-bottom: 8px; 
+    border-radius: var(--radius);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    position: relative;
+    transition: all 0.2s ease;
 }
 
-/* Vertical guide lines that don't look like weird brackets */
-.level-1 { margin-left: 30px; border-left: 3px solid #0052cc; }
-.level-2 { margin-left: 60px; border-left: 3px solid #4c9aff; }
-.level-3 { margin-left: 90px; border-left: 3px solid #deebff; }
+.test-row:hover { transform: scale(1.01); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
-.test-text { font-weight: 500; flex: 1; margin-right: 15px; }
+/* Dynamic Indentation Markers */
+.level-1 { margin-left: 30px; border-left: 4px solid #4C9AFF; }
+.level-2 { margin-left: 60px; border-left: 4px solid #DEEBFF; }
+.level-3 { margin-left: 90px; border-left: 4px solid #F4F5F7; }
 
-.test-controls { display: flex; gap: 8px; align-items: center; }
-.status-btn { padding: 6px 12px; border: 1px solid var(--border); background: white; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
-.status-btn.active.p { background: #36b37e; color: white; border-color: #36b37e; }
-.status-btn.active.f { background: #ff5630; color: white; border-color: #ff5630; }
-
-.note-input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; width: 180px; font-size: 12px; }
-
-/* Builder UI Fixes */
-.editor-line { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.editor-input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 4px; }
-.btn-primary { background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-.btn-outline { background: white; border: 1px solid var(--border); padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-#jira-output { width: 100%; height: 120px; margin-top: 20px; font-family: monospace; padding: 10px; }
-.hidden { display: none !important; }
-
-/* Add these to your style.css */
-
-.grab-handle {
-    cursor: grab;
-    color: #97a0af;
-    padding: 5px;
-    font-size: 18px;
-    user-select: none;
-    display: flex;
-    align-items: center;
+/* Status Button Refinement */
+.status-btn { 
+    padding: 8px 16px; 
+    border-radius: 6px; 
+    border: 1px solid var(--border);
+    background: white;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    transition: all 0.1s;
 }
 
-.grab-handle:active {
-    cursor: grabbing;
+.status-btn.active.p { background: var(--success); color: white; border-color: var(--success); box-shadow: 0 2px 8px rgba(54, 179, 126, 0.4); }
+.status-btn.active.f { background: var(--danger); color: white; border-color: var(--danger); box-shadow: 0 2px 8px rgba(255, 86, 48, 0.4); }
+
+.note-input { 
+    border: 1px solid var(--border); 
+    padding: 8px 12px; 
+    border-radius: 6px; 
+    outline: none; 
+    width: 220px;
+    font-size: 13px;
+    transition: border 0.2s;
 }
 
-.editor-line.dragging {
-    opacity: 0.5;
-    background: #ebecf0;
-    border: 1px dashed var(--primary);
+.note-input:focus { border-color: var(--primary); }
+
+/* Professional UI Components */
+.btn-primary { 
+    background: var(--primary); 
+    color: white; 
+    padding: 12px 24px; 
+    border-radius: 6px; 
+    font-weight: 600; 
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
-/* Optional: Smooth transition for moving rows */
-#editor-items-list {
-    display: flex;
-    flex-direction: column;
+.btn-primary:hover { background: var(--primary-hover); }
+
+.grab-handle { 
+    cursor: grab; 
+    color: #97A0AF; 
+    font-size: 20px; 
+    margin-right: 15px; 
 }
+
+/* Scrollbar Styling */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }
+::-webkit-scrollbar-thumb { background: #C1C7D0; border-radius: 10px; }
