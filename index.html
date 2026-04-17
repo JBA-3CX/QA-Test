@@ -29,22 +29,21 @@
             <div id="suite-picker-section">
                 <h2 style="margin-bottom: 25px;">Select a Suite</h2>
                 <div class="suite-grid" id="run-suite-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:20px;"></div>
-            </div>
+                <div id="run-empty-msg" class="hidden"></div> </div>
             
-            <div id="active-test-section" class="hidden">
+            <div id="active-test-section" class="hidden" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                     <h2 style="display: flex; align-items: center; gap: 15px;">
-                        <button class="status-btn" onclick="showPicker()" style="margin-right: 15px;">⬅ Back</button>
                         <span id="active-suite-name"></span>
                     </h2>
                     <button class="btn-primary" onclick="generateReport()">Copy JIRA Markdown</button>
                 </div>
                 <div id="test-container"></div>
-                <textarea id="jira-output" readonly style="display:none; width: 100%; margin-top: 25px; border-radius: 8px; border: 1px solid #dfe1e6; height: 120px; padding: 15px; font-family: 'JetBrains Mono', monospace; font-size: 13px;"></textarea>
+                <textarea id="jira-output" readonly style="display:none; width: 100%; margin-top: 25px; border-radius: 8px; border: 1px solid #dfe1e6; height: 120px; padding: 15px; font-family: monospace; font-size: 13px;"></textarea>
             </div>
         </div>
 
-        <div id="view-suites" class="view">
+        <div id="view-suites" class="view" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                 <h2>Test Suites</h2>
                 <div style="display: flex; gap: 12px;">
@@ -53,16 +52,13 @@
                     <input type="file" id="import-single-file" accept=".json" style="display: none;" onchange="importSingleSuite(event)">
                 </div>
             </div>
-            
             <div id="suite-list"></div>
 
             <div class="card" id="suite-editor" style="display: none; border-top: 4px solid var(--primary);">
                 <h3 style="margin-bottom: 20px;">Suite Designer</h3>
-                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Inventory Module)" style="width: 100%; padding: 14px; font-size: 1.1rem; margin-bottom: 25px; border: 1px solid #dfe1e6; border-radius: 8px; font-weight: 600;">
+                <input type="text" id="edit-suite-name" placeholder="Suite Name..." style="width: 100%; padding: 14px; font-size: 1.1rem; margin-bottom: 25px; border: 1px solid #dfe1e6; border-radius: 8px; font-weight: 600;">
                 <input type="hidden" id="edit-suite-id">
-                
                 <div id="editor-items-list" style="margin-bottom: 25px;"></div>
-                
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #dfe1e6; padding-top: 25px;">
                     <button class="status-btn" onclick="addLine()" style="background: #f4f5f7;">+ Add Step</button>
                     <div style="display: flex; gap: 12px;">
@@ -73,17 +69,16 @@
             </div>
         </div>
 
-        <div id="view-history" class="view">
+        <div id="view-history" class="view" style="display: none;">
             <h2>Run History</h2>
             <div id="history-list"></div>
         </div>
 
-        <div id="view-settings" class="view">
+        <div id="view-settings" class="view" style="display: none;">
             <h2>Global Settings</h2>
             <div class="card">
-                <h3>Full System Backup</h3>
-                <p style="color: #6b778c; margin: 10px 0 20px 0; font-size: 14px;">Backup your entire environment to a single JSON file.</p>
-                <div style="display: flex; gap: 12px;">
+                <h3>System Backup</h3>
+                <div style="display: flex; gap: 12px; margin-top: 15px;">
                     <button class="btn-primary" onclick="exportData()">Export Database</button>
                     <button class="status-btn" onclick="document.getElementById('import-global-file').click()">Restore Database</button>
                 </div>
