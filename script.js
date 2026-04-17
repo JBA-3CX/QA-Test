@@ -19,14 +19,23 @@ function pushUndo() {
     if (undoStack.length > 30) undoStack.shift();
 }
 
-// --- NAVIGATION ---
+// --- NAVIGATION (REFINED FOR STATE CLARITY) ---
 function switchView(viewId) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    // 1. Force hide all high-level views
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.remove('active');
+        v.style.display = 'none'; 
+    });
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
+    // 2. Activate target view
     const targetView = document.getElementById(`view-${viewId}`);
-    if (targetView) targetView.classList.add('active');
+    if (targetView) {
+        targetView.classList.add('active');
+        targetView.style.display = 'block';
+    }
     
+    // 3. Update Sidebar highlight
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(viewId)) {
@@ -34,12 +43,13 @@ function switchView(viewId) {
         }
     });
 
+    // 4. Handle sub-logic per view
     const barContainer = document.getElementById('progress-bar-container');
     if (viewId === 'run') {
-        barContainer.style.display = 'block';
+        if (barContainer) barContainer.style.display = 'block';
         showPicker();
     } else {
-        barContainer.style.display = 'none';
+        if (barContainer) barContainer.style.display = 'none';
         if (viewId === 'suites') renderSuites();
         if (viewId === 'history') renderHistory();
     }
@@ -57,16 +67,27 @@ function updateProgressBar() {
     bar.style.width = percent + '%';
 }
 
-// --- RUNNER LOGIC ---
+// --- RUNNER LOGIC (FIXED NAVIGATION OVERLAP) ---
 function showPicker() {
     activeSuiteId = null; 
-    document.getElementById('suite-picker-section').classList.remove('hidden');
-    document.getElementById('active-test-section').classList.add('hidden');
+    
+    // UI Safety: Explicitly toggle visibility between Picker and Runner
+    const pickerSection = document.getElementById('suite-picker-section');
+    const runnerSection = document.getElementById('active-test-section');
+    
+    if (pickerSection) {
+        pickerSection.classList.remove('hidden');
+        pickerSection.style.display = 'block';
+    }
+    if (runnerSection) {
+        runnerSection.classList.add('hidden');
+        runnerSection.style.display = 'none';
+    }
     
     const grid = document.getElementById('run-suite-grid');
     let html = '';
 
-    // 1. List Active Sessions
+    // 1. Render Active Sessions
     if (sessions.length > 0) {
         html += `<h3 style="grid-column: 1/-1; margin-top: 10px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Active Sessions</h3>`;
         html += sessions.map(sess => `
@@ -82,25 +103,22 @@ function showPicker() {
         </div>`).join('');
     }
 
-    // 2. List All Available Suites
+    // 2. Render Available Suites
     if (suites.length > 0) {
         html += `<h3 style="grid-column: 1/-1; margin-top: 25px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Start New Run</h3>`;
         html += suites.map(s => `
-            <div class="card" style="cursor:pointer; border-top: 1px solid #eee;" onclick="startRun('${s.id}')">
+            <div class="card" style="cursor:pointer;" onclick="startRun('${s.id}')">
                 <h3 style="color:var(--primary);">${s.name}</h3>
                 <p style="color:var(--text-light); font-size:14px; margin-top:5px;">${s.tests.length} Steps</p>
             </div>
         `).join('');
     }
 
-    // 3. Dynamic Empty State (IQ-Level Fix)
+    // 3. Dynamic Empty State
     if (suites.length === 0 && sessions.length === 0) {
         html = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
-                <div style="font-size: 3rem; margin-bottom: 20px;">📂</div>
-                <h3 style="color: var(--text-dark);">No suites found</h3>
-                <p style="color: var(--text-light); margin-top: 10px;">Visit "Manage Suites" to create your first test plan.</p>
-                <button class="btn-primary" style="margin-top: 20px;" onclick="switchView('suites')">Go to Manage Suites</button>
+                <h3 style="color: var(--text-light);">No suites found. Visit "Manage Suites" to begin.</h3>
             </div>
         `;
     }
@@ -118,12 +136,7 @@ function startRun(id) {
     if (!suite) return;
 
     currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
-    sessions.push({ 
-        suiteId: id, 
-        suiteName: suite.name, 
-        state: currentRunState, 
-        progress: 0 
-    });
+    sessions.push({ suiteId: id, suiteName: suite.name, state: currentRunState, progress: 0 });
     saveData();
     resumeSession(id);
 }
@@ -133,11 +146,21 @@ function resumeSession(id) {
     const sess = sessions.find(s => s.suiteId === id);
     if (!sess) return showPicker();
 
+    // UI Safety: Hide picker, show runner
+    const pickerSection = document.getElementById('suite-picker-section');
+    const runnerSection = document.getElementById('active-test-section');
+    
+    if (pickerSection) {
+        pickerSection.classList.add('hidden');
+        pickerSection.style.display = 'none';
+    }
+    if (runnerSection) {
+        runnerSection.classList.remove('hidden');
+        runnerSection.style.display = 'block';
+    }
+
     currentRunState = sess.state;
     document.getElementById('active-suite-name').innerText = sess.suiteName;
-    document.getElementById('suite-picker-section').classList.add('hidden');
-    document.getElementById('active-test-section').classList.remove('hidden');
-    
     renderTestRun();
     window.scrollTo(0,0);
 }
@@ -148,12 +171,6 @@ function cancelSession(id) {
         saveData();
         showPicker();
     }
-}
-
-function editCurrentSuite() {
-    const suiteId = activeSuiteId;
-    switchView('suites');
-    showSuiteEditor(suiteId);
 }
 
 function renderTestRun() {
@@ -177,6 +194,12 @@ function renderTestRun() {
         `;
     }).join('');
     updateProgressBar();
+}
+
+function editCurrentSuite() {
+    const suiteId = activeSuiteId;
+    switchView('suites');
+    showSuiteEditor(suiteId);
 }
 
 function updateStatus(i, s) { 
@@ -375,4 +398,5 @@ function importData(e) {
     reader.readAsText(e.target.files[0]);
 }
 
-showPicker();
+// Initial Kick-off
+switchView('run');
