@@ -19,23 +19,20 @@ function pushUndo() {
     if (undoStack.length > 30) undoStack.shift();
 }
 
-// --- NAVIGATION (REFINED FOR STATE CLARITY) ---
+// --- NAVIGATION (THE HEART OF THE UX) ---
 function switchView(viewId) {
-    // 1. Force hide all high-level views
     document.querySelectorAll('.view').forEach(v => {
         v.classList.remove('active');
         v.style.display = 'none'; 
     });
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
-    // 2. Activate target view
     const targetView = document.getElementById(`view-${viewId}`);
     if (targetView) {
         targetView.classList.add('active');
         targetView.style.display = 'block';
     }
     
-    // 3. Update Sidebar highlight
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(viewId)) {
@@ -43,7 +40,6 @@ function switchView(viewId) {
         }
     });
 
-    // 4. Handle sub-logic per view
     const barContainer = document.getElementById('progress-bar-container');
     if (viewId === 'run') {
         if (barContainer) barContainer.style.display = 'block';
@@ -67,27 +63,25 @@ function updateProgressBar() {
     bar.style.width = percent + '%';
 }
 
-// --- RUNNER LOGIC (FIXED NAVIGATION OVERLAP) ---
+// --- RUNNER & CONCURRENT SESSIONS ---
 function showPicker() {
     activeSuiteId = null; 
     
-    // UI Safety: Explicitly toggle visibility between Picker and Runner
     const pickerSection = document.getElementById('suite-picker-section');
     const runnerSection = document.getElementById('active-test-section');
     
     if (pickerSection) {
-        pickerSection.classList.remove('hidden');
         pickerSection.style.display = 'block';
+        pickerSection.classList.remove('hidden');
     }
     if (runnerSection) {
-        runnerSection.classList.add('hidden');
         runnerSection.style.display = 'none';
+        runnerSection.classList.add('hidden');
     }
     
     const grid = document.getElementById('run-suite-grid');
     let html = '';
 
-    // 1. Render Active Sessions
     if (sessions.length > 0) {
         html += `<h3 style="grid-column: 1/-1; margin-top: 10px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Active Sessions</h3>`;
         html += sessions.map(sess => `
@@ -103,7 +97,6 @@ function showPicker() {
         </div>`).join('');
     }
 
-    // 2. Render Available Suites
     if (suites.length > 0) {
         html += `<h3 style="grid-column: 1/-1; margin-top: 25px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Start New Run</h3>`;
         html += suites.map(s => `
@@ -114,16 +107,11 @@ function showPicker() {
         `).join('');
     }
 
-    // 3. Dynamic Empty State
     if (suites.length === 0 && sessions.length === 0) {
-        html = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
-                <h3 style="color: var(--text-light);">No suites found. Visit "Manage Suites" to begin.</h3>
-            </div>
-        `;
+        html = `<div style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;"><h3 style="color: var(--text-light);">No suites found. Visit "Manage Suites" to begin.</h3></div>`;
     }
 
-    grid.innerHTML = html;
+    if (grid) grid.innerHTML = html;
     updateProgressBar();
 }
 
@@ -146,18 +134,12 @@ function resumeSession(id) {
     const sess = sessions.find(s => s.suiteId === id);
     if (!sess) return showPicker();
 
-    // UI Safety: Hide picker, show runner
     const pickerSection = document.getElementById('suite-picker-section');
     const runnerSection = document.getElementById('active-test-section');
     
-    if (pickerSection) {
-        pickerSection.classList.add('hidden');
-        pickerSection.style.display = 'none';
-    }
-    if (runnerSection) {
-        runnerSection.classList.remove('hidden');
-        runnerSection.style.display = 'block';
-    }
+    pickerSection.style.display = 'none';
+    runnerSection.style.display = 'block';
+    runnerSection.classList.remove('hidden');
 
     currentRunState = sess.state;
     document.getElementById('active-suite-name').innerText = sess.suiteName;
@@ -178,7 +160,7 @@ function renderTestRun() {
     container.innerHTML = `
         <div style="margin-bottom: 25px; display:flex; gap:12px; background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px;">
             <button class="status-btn" onclick="editCurrentSuite()">⚙️ Edit Requirements</button>
-            <button class="status-btn" style="color: #ff5630;" onclick="showPicker()">💾 Save & Exit to Menu</button>
+            <button class="status-btn" style="color: #ff5630; background: white;" onclick="showPicker()">💾 Save & Exit to Menu</button>
         </div>
     ` + currentRunState.map((test, index) => {
         let bleedClass = test.status === 'Pass' ? 'passed' : (test.status === 'Fail' ? 'failed' : '');
@@ -194,12 +176,6 @@ function renderTestRun() {
         `;
     }).join('');
     updateProgressBar();
-}
-
-function editCurrentSuite() {
-    const suiteId = activeSuiteId;
-    switchView('suites');
-    showSuiteEditor(suiteId);
 }
 
 function updateStatus(i, s) { 
@@ -239,7 +215,7 @@ function generateReport() {
     });
 }
 
-// --- BUILDER LOGIC ---
+// --- BUILDER & SMART MERGE ---
 function showSuiteEditor(id = null) {
     document.getElementById('suite-editor').style.display = 'block';
     undoStack = []; 
@@ -281,10 +257,7 @@ function renderEditor(focusIndex = null) {
             if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); pushUndo(); moveDepth(i, 1, true); }
             if (e.ctrlKey && e.key === 'ArrowLeft') { e.preventDefault(); pushUndo(); moveDepth(i, -1, true); }
         });
-        row.addEventListener('dragstart', handleDragStart);
-        row.addEventListener('dragover', handleDragOver);
-        row.addEventListener('drop', handleDrop);
-        row.addEventListener('dragend', handleDragEnd);
+        row.addEventListener('dragstart', handleDragStart); row.addEventListener('dragover', handleDragOver); row.addEventListener('drop', handleDrop); row.addEventListener('dragend', handleDragEnd);
         container.appendChild(row);
         if (focusIndex === i) input.focus();
     });
@@ -332,11 +305,16 @@ function saveSuite() {
     document.getElementById('suite-editor').style.display='none'; 
     renderSuites();
     
-    const sessIdx = sessions.findIndex(sess => sess.suiteId === id);
-    if (sessIdx > -1) {
+    if (sessions.some(s => s.suiteId === id)) {
         switchView('run');
         resumeSession(id);
     }
+}
+
+function editCurrentSuite() {
+    const suiteId = activeSuiteId;
+    switchView('suites');
+    showSuiteEditor(suiteId);
 }
 
 function renderSuites() {
@@ -398,5 +376,4 @@ function importData(e) {
     reader.readAsText(e.target.files[0]);
 }
 
-// Initial Kick-off
 switchView('run');
