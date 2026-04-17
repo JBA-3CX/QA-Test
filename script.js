@@ -1,7 +1,7 @@
 // --- DATA MANAGEMENT ---
 let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
 let history = JSON.parse(localStorage.getItem('qa_history')) || [];
-let sessions = JSON.parse(localStorage.getItem('qa_sessions')) || []; // CHANGED: Array for multi-session
+let sessions = JSON.parse(localStorage.getItem('qa_sessions')) || []; 
 let activeSuiteId = null;
 let editingTests = []; 
 let undoStack = []; 
@@ -23,12 +23,15 @@ function pushUndo() {
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    
     const targetView = document.getElementById(`view-${viewId}`);
     if (targetView) targetView.classList.add('active');
     
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
-        if (item.getAttribute('onclick').includes(viewId)) item.classList.add('active');
+        if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(viewId)) {
+            item.classList.add('active');
+        }
     });
 
     const barContainer = document.getElementById('progress-bar-container');
@@ -44,17 +47,20 @@ function switchView(viewId) {
 
 function updateProgressBar() {
     const activeSess = sessions.find(s => s.suiteId === activeSuiteId);
-    if (!activeSess) {
-        document.getElementById('progress-bar-fill').style.width = '0%';
+    const bar = document.getElementById('progress-bar-fill');
+    if (!activeSess || !bar) {
+        if (bar) bar.style.width = '0%';
         return;
     }
     const completed = activeSess.state.filter(x => x.status !== 'Pending').length;
     const percent = Math.round((completed / activeSess.state.length) * 100);
-    document.getElementById('progress-bar-fill').style.width = percent + '%';
+    bar.style.width = percent + '%';
 }
 
 // --- RUNNER LOGIC ---
 function showPicker() {
+    // Clear active UI states
+    activeSuiteId = null; 
     document.getElementById('suite-picker-section').classList.remove('hidden');
     document.getElementById('active-test-section').classList.add('hidden');
     
@@ -62,35 +68,36 @@ function showPicker() {
     const emptyMsg = document.getElementById('run-empty-msg');
     let html = '';
 
-    // FIX: Only show empty message if there are literally no suites AND no sessions
+    // Logic fix for the "No suites found" ghost message
     if (suites.length === 0 && sessions.length === 0) {
-        emptyMsg.classList.remove('hidden');
+        if (emptyMsg) emptyMsg.classList.remove('hidden');
     } else {
-        emptyMsg.classList.add('hidden');
+        if (emptyMsg) emptyMsg.classList.add('hidden');
     }
 
-    // List Active Sessions
+    // List Active Sessions First
     if (sessions.length > 0) {
-        html += `<h3 style="grid-column: 1/-1; margin-top: 10px; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase;">Active Sessions</h3>`;
+        html += `<h3 style="grid-column: 1/-1; margin-top: 10px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Active Sessions</h3>`;
         html += sessions.map(sess => `
-        <div class="card" style="grid-column: 1 / -1; background: #fff9e6; border-color: #ffcc00; display:flex; justify-content:space-between; align-items:center; padding: 15px 20px;">
+        <div class="card" style="grid-column: 1 / -1; background: #fff9e6; border-left: 6px solid #ffcc00; display:flex; justify-content:space-between; align-items:center; padding: 15px 20px;">
             <div>
-                <strong style="color: #856404;">⏳ ${sess.suiteName}</strong>
-                <span style="color: #6b778c; margin-left: 10px;">${sess.progress}% Complete</span>
+                <strong style="color: #856404; font-size: 1.1rem;">⏳ ${sess.suiteName}</strong>
+                <span style="color: #6b778c; margin-left: 15px;">${sess.progress}% Complete</span>
             </div>
             <div style="display:flex; gap:10px;">
-                <button class="status-btn" style="color:#ff5630; border-color:#ff5630;" onclick="cancelSession('${sess.suiteId}')">Discard</button>
+                <button class="status-btn" style="color:#ff5630; border-color:#ff5630; background: white;" onclick="cancelSession('${sess.suiteId}')">Discard</button>
                 <button class="btn-primary" style="background:#ffcc00; color:#443300;" onclick="resumeSession('${sess.suiteId}')">Resume</button>
             </div>
         </div>`).join('');
     }
 
+    // List All Available Suites
     if (suites.length > 0) {
-        html += `<h3 style="grid-column: 1/-1; margin-top: 20px; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase;">All Suites</h3>`;
+        html += `<h3 style="grid-column: 1/-1; margin-top: 25px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Start New Run</h3>`;
         html += suites.map(s => `
-            <div class="card" style="cursor:pointer;" onclick="startRun('${s.id}')">
+            <div class="card" style="cursor:pointer; border-top: 1px solid #eee;" onclick="startRun('${s.id}')">
                 <h3 style="color:var(--primary);">${s.name}</h3>
-                <p style="color:var(--text-light); font-size:14px;">${s.tests.length} Steps</p>
+                <p style="color:var(--text-light); font-size:14px; margin-top:5px;">${s.tests.length} Steps</p>
             </div>
         `).join('');
     }
@@ -100,7 +107,6 @@ function showPicker() {
 }
 
 function startRun(id) {
-    // Check if session already exists for this suite
     const existing = sessions.find(s => s.suiteId === id);
     if (existing) return resumeSession(id);
 
@@ -109,20 +115,28 @@ function startRun(id) {
     if (!suite) return;
 
     currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
-    sessions.push({ suiteId: id, suiteName: suite.name, state: currentRunState, progress: 0 });
+    sessions.push({ 
+        suiteId: id, 
+        suiteName: suite.name, 
+        state: currentRunState, 
+        progress: 0 
+    });
     saveData();
-    
     resumeSession(id);
 }
 
 function resumeSession(id) {
     activeSuiteId = id;
     const sess = sessions.find(s => s.suiteId === id);
+    if (!sess) return showPicker();
+
     currentRunState = sess.state;
     document.getElementById('active-suite-name').innerText = sess.suiteName;
     document.getElementById('suite-picker-section').classList.add('hidden');
     document.getElementById('active-test-section').classList.remove('hidden');
+    
     renderTestRun();
+    window.scrollTo(0,0);
 }
 
 function cancelSession(id) {
@@ -142,9 +156,9 @@ function editCurrentSuite() {
 function renderTestRun() {
     const container = document.getElementById('test-container');
     container.innerHTML = `
-        <div style="margin-bottom: 20px; display:flex; gap:12px;">
+        <div style="margin-bottom: 25px; display:flex; gap:12px; background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px;">
             <button class="status-btn" onclick="editCurrentSuite()">⚙️ Edit Requirements</button>
-            <button class="status-btn" style="color: #ff5630;" onclick="switchView('run')">💾 Save & Exit</button>
+            <button class="status-btn" style="color: #ff5630;" onclick="showPicker()">💾 Save & Exit to Menu</button>
         </div>
     ` + currentRunState.map((test, index) => {
         let bleedClass = test.status === 'Pass' ? 'passed' : (test.status === 'Fail' ? 'failed' : '');
@@ -192,10 +206,10 @@ function generateReport() {
 
     navigator.clipboard.writeText(report).then(() => {
         history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: sess.suiteName, report });
-        sessions = sessions.filter(s => s.suiteId !== activeSuiteId); // Remove only this session
+        sessions = sessions.filter(s => s.suiteId !== activeSuiteId); 
         saveData(); 
         alert("Report Copied! Session closed.");
-        switchView('run');
+        showPicker();
     });
 }
 
@@ -231,7 +245,7 @@ function renderEditor(focusIndex = null) {
                 <button class="status-btn" tabindex="-1" onclick="moveDepth(${i}, -1)">◀</button>
                 <button class="status-btn" tabindex="-1" onclick="moveDepth(${i}, 1)">▶</button>
             </div>
-            <input type="text" class="editor-input" tabindex="0" value="${t.text}" oninput="editingTests[${i}].text=this.value">
+            <input type="text" class="editor-input" tabindex="0" value="${t.text}" oninput="editingTests[${i}].text=this.value" style="flex:1; margin:0 10px; border:1px solid #ddd; padding:8px; border-radius:6px;">
             <button tabindex="-1" onclick="deleteLine(${i})" style="border:none; background:none; color:#ff5630; cursor:pointer; padding:5px;">✕</button>
         `;
         const input = row.querySelector('input');
