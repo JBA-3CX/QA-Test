@@ -1,17 +1,17 @@
 // --- DATA MANAGEMENT ---
 let suites = JSON.parse(localStorage.getItem('qa_suites')) || [];
 let history = JSON.parse(localStorage.getItem('qa_history')) || [];
-let activeSession = JSON.parse(localStorage.getItem('qa_active_session')) || null;
+let sessions = JSON.parse(localStorage.getItem('qa_sessions')) || []; // CHANGED: Array for multi-session
+let activeSuiteId = null;
 let editingTests = []; 
 let undoStack = []; 
 let currentRunState = [];
-let activeSuiteId = null;
 let dragSrcIndex = null;
 
 function saveData() {
     localStorage.setItem('qa_suites', JSON.stringify(suites));
     localStorage.setItem('qa_history', JSON.stringify(history));
-    localStorage.setItem('qa_active_session', JSON.stringify(activeSession));
+    localStorage.setItem('qa_sessions', JSON.stringify(sessions));
 }
 
 function pushUndo() {
@@ -25,6 +25,7 @@ function switchView(viewId) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const targetView = document.getElementById(`view-${viewId}`);
     if (targetView) targetView.classList.add('active');
+    
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         if (item.getAttribute('onclick').includes(viewId)) item.classList.add('active');
@@ -42,12 +43,13 @@ function switchView(viewId) {
 }
 
 function updateProgressBar() {
-    if (!activeSession) {
+    const activeSess = sessions.find(s => s.suiteId === activeSuiteId);
+    if (!activeSess) {
         document.getElementById('progress-bar-fill').style.width = '0%';
         return;
     }
-    const completed = activeSession.state.filter(x => x.status !== 'Pending').length;
-    const percent = Math.round((completed / activeSession.state.length) * 100);
+    const completed = activeSess.state.filter(x => x.status !== 'Pending').length;
+    const percent = Math.round((completed / activeSess.state.length) * 100);
     document.getElementById('progress-bar-fill').style.width = percent + '%';
 }
 
@@ -55,64 +57,82 @@ function updateProgressBar() {
 function showPicker() {
     document.getElementById('suite-picker-section').classList.remove('hidden');
     document.getElementById('active-test-section').classList.add('hidden');
+    
     const grid = document.getElementById('run-suite-grid');
+    const emptyMsg = document.getElementById('run-empty-msg');
     let html = '';
 
-    if (activeSession) {
-        html += `
-        <div class="card" style="grid-column: 1 / -1; background: #fff9e6; border-color: #ffcc00; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <strong style="color: #856404;">⚠️ Resume Unfinished Session</strong><br>
-                <span style="color: #6b778c;">${activeSession.suiteName} • ${activeSession.progress}%</span>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button class="status-btn" style="background:#fff; color:#ff5630; border-color:#ff5630;" onclick="cancelRun()">Discard Run</button>
-                <button class="btn-primary" style="background:#ffcc00; color:#443300;" onclick="resumeSession()">Resume Work</button>
-            </div>
-        </div>`;
+    // FIX: Only show empty message if there are literally no suites AND no sessions
+    if (suites.length === 0 && sessions.length === 0) {
+        emptyMsg.classList.remove('hidden');
+    } else {
+        emptyMsg.classList.add('hidden');
     }
 
-    html += suites.map(s => `
-        <div class="card" style="cursor:pointer;" onclick="startRun('${s.id}')">
-            <h3 style="color:var(--primary);">${s.name}</h3>
-            <p style="color:var(--text-light); font-size:14px;">${s.tests.length} Steps</p>
-        </div>
-    `).join('');
+    // List Active Sessions
+    if (sessions.length > 0) {
+        html += `<h3 style="grid-column: 1/-1; margin-top: 10px; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase;">Active Sessions</h3>`;
+        html += sessions.map(sess => `
+        <div class="card" style="grid-column: 1 / -1; background: #fff9e6; border-color: #ffcc00; display:flex; justify-content:space-between; align-items:center; padding: 15px 20px;">
+            <div>
+                <strong style="color: #856404;">⏳ ${sess.suiteName}</strong>
+                <span style="color: #6b778c; margin-left: 10px;">${sess.progress}% Complete</span>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="status-btn" style="color:#ff5630; border-color:#ff5630;" onclick="cancelSession('${sess.suiteId}')">Discard</button>
+                <button class="btn-primary" style="background:#ffcc00; color:#443300;" onclick="resumeSession('${sess.suiteId}')">Resume</button>
+            </div>
+        </div>`).join('');
+    }
+
+    if (suites.length > 0) {
+        html += `<h3 style="grid-column: 1/-1; margin-top: 20px; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase;">All Suites</h3>`;
+        html += suites.map(s => `
+            <div class="card" style="cursor:pointer;" onclick="startRun('${s.id}')">
+                <h3 style="color:var(--primary);">${s.name}</h3>
+                <p style="color:var(--text-light); font-size:14px;">${s.tests.length} Steps</p>
+            </div>
+        `).join('');
+    }
+
     grid.innerHTML = html;
     updateProgressBar();
 }
 
-function cancelRun() {
-    if(confirm("Are you sure? This will delete all Pass/Fail progress for this specific run.")) {
-        activeSession = null;
+function startRun(id) {
+    // Check if session already exists for this suite
+    const existing = sessions.find(s => s.suiteId === id);
+    if (existing) return resumeSession(id);
+
+    activeSuiteId = id;
+    const suite = suites.find(s => s.id === id);
+    if (!suite) return;
+
+    currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
+    sessions.push({ suiteId: id, suiteName: suite.name, state: currentRunState, progress: 0 });
+    saveData();
+    
+    resumeSession(id);
+}
+
+function resumeSession(id) {
+    activeSuiteId = id;
+    const sess = sessions.find(s => s.suiteId === id);
+    currentRunState = sess.state;
+    document.getElementById('active-suite-name').innerText = sess.suiteName;
+    document.getElementById('suite-picker-section').classList.add('hidden');
+    document.getElementById('active-test-section').classList.remove('hidden');
+    renderTestRun();
+}
+
+function cancelSession(id) {
+    if(confirm("Discard this session? Progress will be lost.")) {
+        sessions = sessions.filter(s => s.suiteId !== id);
         saveData();
         showPicker();
     }
 }
 
-function startRun(id) {
-    activeSuiteId = id;
-    const suite = suites.find(s => s.id === id);
-    if (!suite) return;
-    document.getElementById('active-suite-name').innerText = suite.name;
-    currentRunState = suite.tests.map(t => ({ ...t, status: 'Pending', notes: '' }));
-    activeSession = { suiteId: id, suiteName: suite.name, state: currentRunState, progress: 0 };
-    saveData();
-    document.getElementById('suite-picker-section').classList.add('hidden');
-    document.getElementById('active-test-section').classList.remove('hidden');
-    renderTestRun();
-}
-
-function resumeSession() {
-    activeSuiteId = activeSession.suiteId;
-    currentRunState = activeSession.state;
-    document.getElementById('active-suite-name').innerText = activeSession.suiteName;
-    document.getElementById('suite-picker-section').classList.add('hidden');
-    document.getElementById('active-test-section').classList.remove('hidden');
-    renderTestRun();
-}
-
-// NEW: Jump from Runner to Builder for the current suite
 function editCurrentSuite() {
     const suiteId = activeSuiteId;
     switchView('suites');
@@ -122,9 +142,9 @@ function editCurrentSuite() {
 function renderTestRun() {
     const container = document.getElementById('test-container');
     container.innerHTML = `
-        <div style="margin-bottom: 15px; display:flex; gap:10px;">
-            <button class="status-btn" onclick="editCurrentSuite()">⚙️ Edit Suite Requirements</button>
-            <button class="status-btn" style="color: #ff5630;" onclick="cancelRun()">❌ Cancel Run</button>
+        <div style="margin-bottom: 20px; display:flex; gap:12px;">
+            <button class="status-btn" onclick="editCurrentSuite()">⚙️ Edit Requirements</button>
+            <button class="status-btn" style="color: #ff5630;" onclick="switchView('run')">💾 Save & Exit</button>
         </div>
     ` + currentRunState.map((test, index) => {
         let bleedClass = test.status === 'Pass' ? 'passed' : (test.status === 'Fail' ? 'failed' : '');
@@ -144,31 +164,37 @@ function renderTestRun() {
 
 function updateStatus(i, s) { 
     currentRunState[i].status = s;
-    const completed = currentRunState.filter(x => x.status !== 'Pending').length;
-    activeSession.progress = Math.round((completed / currentRunState.length) * 100);
-    activeSession.state = currentRunState;
+    const sessIdx = sessions.findIndex(sess => sess.suiteId === activeSuiteId);
+    if (sessIdx > -1) {
+        const completed = currentRunState.filter(x => x.status !== 'Pending').length;
+        sessions[sessIdx].progress = Math.round((completed / currentRunState.length) * 100);
+        sessions[sessIdx].state = currentRunState;
+    }
     saveData();
     renderTestRun(); 
 }
 
 function updateNoteState(i, val) {
     currentRunState[i].notes = val;
-    activeSession.state = currentRunState;
+    const sessIdx = sessions.findIndex(sess => sess.suiteId === activeSuiteId);
+    if (sessIdx > -1) sessions[sessIdx].state = currentRunState;
     saveData();
 }
 
 function generateReport() {
-    const suite = suites.find(s => s.id === activeSuiteId);
+    const sess = sessions.find(s => s.suiteId === activeSuiteId);
     const fails = currentRunState.filter(s => s.status === 'Fail');
     const passes = currentRunState.filter(s => s.status === 'Pass');
-    let report = `## Regression: ${suite.name}\n\n`;
+
+    let report = `## Regression: ${sess.suiteName}\n\n`;
     if (fails.length) report += `### 🚨 FAILS\n` + fails.map(f => `* **${f.text}**: ${f.notes || 'No notes'}`).join('\n') + "\n\n";
     report += `### ✅ PASSES\n` + passes.map(p => `* ${p.text}`).join('\n');
+
     navigator.clipboard.writeText(report).then(() => {
-        history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: suite.name, report });
-        activeSession = null;
+        history.unshift({ id: Date.now(), date: new Date().toLocaleString(), suiteName: sess.suiteName, report });
+        sessions = sessions.filter(s => s.suiteId !== activeSuiteId); // Remove only this session
         saveData(); 
-        alert("Markdown Report Copied!");
+        alert("Report Copied! Session closed.");
         switchView('run');
     });
 }
@@ -245,19 +271,18 @@ function saveSuite() {
     if(!name) return alert("Please name your suite");
     const id = document.getElementById('edit-suite-id').value || Date.now().toString();
     const idx = suites.findIndex(s => s.id === id);
-    
     const newTestData = JSON.parse(JSON.stringify(editingTests));
     
     if (idx > -1) {
         suites[idx] = { id, name, tests: newTestData };
-        // SMART MERGE: If this suite is currently being run, update the run state without wiping progress
-        if (activeSession && activeSession.suiteId === id) {
-            const oldState = activeSession.state;
-            activeSession.state = newTestData.map(newStep => {
+        const sessIdx = sessions.findIndex(sess => sess.suiteId === id);
+        if (sessIdx > -1) {
+            const oldState = sessions[sessIdx].state;
+            sessions[sessIdx].state = newTestData.map(newStep => {
                 const existing = oldState.find(os => os.text === newStep.text && os.level === newStep.level);
                 return existing ? existing : { ...newStep, status: 'Pending', notes: '' };
             });
-            activeSession.suiteName = name;
+            sessions[sessIdx].suiteName = name;
         }
     } else {
         suites.push({ id, name, tests: newTestData });
@@ -267,10 +292,10 @@ function saveSuite() {
     document.getElementById('suite-editor').style.display='none'; 
     renderSuites();
     
-    // If we were editing the active suite, go back to the runner automatically
-    if (activeSession && activeSession.suiteId === id) {
+    const sessIdx = sessions.findIndex(sess => sess.suiteId === id);
+    if (sessIdx > -1) {
         switchView('run');
-        resumeSession();
+        resumeSession(id);
     }
 }
 
