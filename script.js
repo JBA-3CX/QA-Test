@@ -59,23 +59,14 @@ function updateProgressBar() {
 
 // --- RUNNER LOGIC ---
 function showPicker() {
-    // Clear active UI states
     activeSuiteId = null; 
     document.getElementById('suite-picker-section').classList.remove('hidden');
     document.getElementById('active-test-section').classList.add('hidden');
     
     const grid = document.getElementById('run-suite-grid');
-    const emptyMsg = document.getElementById('run-empty-msg');
     let html = '';
 
-    // Logic fix for the "No suites found" ghost message
-    if (suites.length === 0 && sessions.length === 0) {
-        if (emptyMsg) emptyMsg.classList.remove('hidden');
-    } else {
-        if (emptyMsg) emptyMsg.classList.add('hidden');
-    }
-
-    // List Active Sessions First
+    // 1. List Active Sessions
     if (sessions.length > 0) {
         html += `<h3 style="grid-column: 1/-1; margin-top: 10px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Active Sessions</h3>`;
         html += sessions.map(sess => `
@@ -91,7 +82,7 @@ function showPicker() {
         </div>`).join('');
     }
 
-    // List All Available Suites
+    // 2. List All Available Suites
     if (suites.length > 0) {
         html += `<h3 style="grid-column: 1/-1; margin-top: 25px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Start New Run</h3>`;
         html += suites.map(s => `
@@ -100,6 +91,18 @@ function showPicker() {
                 <p style="color:var(--text-light); font-size:14px; margin-top:5px;">${s.tests.length} Steps</p>
             </div>
         `).join('');
+    }
+
+    // 3. Dynamic Empty State (IQ-Level Fix)
+    if (suites.length === 0 && sessions.length === 0) {
+        html = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
+                <div style="font-size: 3rem; margin-bottom: 20px;">📂</div>
+                <h3 style="color: var(--text-dark);">No suites found</h3>
+                <p style="color: var(--text-light); margin-top: 10px;">Visit "Manage Suites" to create your first test plan.</p>
+                <button class="btn-primary" style="margin-top: 20px;" onclick="switchView('suites')">Go to Manage Suites</button>
+            </div>
+        `;
     }
 
     grid.innerHTML = html;
