@@ -4,15 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QA Regression Hub | 3CX ERP</title>
-    
     <link rel="icon" type="image/png" href="favicon.png">
-    
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <nav>
-        <div class="nav-header">🧪 QA Hub <br><small>3CX ERP</small></div>
+        <div class="nav-header">🧪 QA Hub <br><small style="font-size: 0.7rem; opacity: 0.6; letter-spacing: 1px;">3CX ERP SYSTEM</small></div>
         <div class="nav-items">
             <div class="nav-item active" onclick="switchView('run')">▶️ Run Tests</div>
             <div class="nav-item" onclick="switchView('suites')">📁 Manage Suites</div>
@@ -22,50 +21,56 @@
     </nav>
 
     <main>
+        <div id="progress-bar-container">
+            <div id="progress-bar-fill"></div>
+        </div>
+
         <div id="view-run" class="view active">
             <div id="suite-picker-section">
-                <h2>Select a Suite to Test</h2>
-                <div class="suite-grid" id="run-suite-grid"></div>
-                <div id="run-empty-msg" class="empty-state hidden" style="text-align: center; padding: 40px; color: #6b778c;">
-                    <p>No suites found. Go to "Manage Suites" to create or import one!</p>
+                <h2 style="margin-bottom: 25px;">Select a Suite</h2>
+                <div class="suite-grid" id="run-suite-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:20px;"></div>
+                <div id="run-empty-msg" class="hidden" style="text-align: center; padding: 60px;">
+                    <p style="color: #6b778c;">No suites found. Visit "Manage Suites" to begin.</p>
                 </div>
             </div>
             
             <div id="active-test-section" class="hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2><button class="btn-outline" onclick="showPicker()" style="margin-right: 10px;">⬅ Back</button> <span id="active-suite-name"></span></h2>
-                    <button class="btn-primary" onclick="generateReport()">Copy JIRA Report</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h2 style="display: flex; align-items: center; gap: 15px;">
+                        <button class="status-btn" onclick="showPicker()" style="text-transform: none; font-weight: 500;">⬅ Back</button> 
+                        <span id="active-suite-name"></span>
+                    </h2>
+                    <button class="btn-primary" onclick="generateReport()">Copy JIRA Markdown</button>
                 </div>
                 <div id="test-container"></div>
-                <textarea id="jira-output" readonly style="display:none; width: 100%; margin-top: 20px; font-family: monospace;"></textarea>
+                <textarea id="jira-output" readonly style="display:none; width: 100%; margin-top: 25px; border-radius: 8px; border: 1px solid #dfe1e6; height: 120px; padding: 15px; font-family: 'JetBrains Mono', monospace; font-size: 13px;"></textarea>
             </div>
         </div>
 
         <div id="view-suites" class="view">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                 <h2>Test Suites</h2>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 12px;">
                     <button class="btn-primary" onclick="showSuiteEditor()">+ New Suite</button>
-                    <button class="btn-outline" onclick="document.getElementById('import-single-file').click()">📥 Import Suite</button>
+                    <button class="status-btn" onclick="document.getElementById('import-single-file').click()">📥 Import</button>
                     <input type="file" id="import-single-file" accept=".json" style="display: none;" onchange="importSingleSuite(event)">
                 </div>
             </div>
             
             <div id="suite-list"></div>
 
-            <div class="card" id="suite-editor" style="display: none; margin-top: 20px;">
-                <h3 id="editor-title" style="margin-bottom: 15px;">Suite Builder</h3>
-                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Checkout Flow)" style="width: 100%; padding: 12px; font-size: 1.1rem; margin-bottom: 20px; border: 1px solid #dfe1e6; border-radius: 4px;">
+            <div class="card" id="suite-editor" style="display: none; border-top: 4px solid var(--primary);">
+                <h3 style="margin-bottom: 20px;">Suite Designer</h3>
+                <input type="text" id="edit-suite-name" placeholder="Suite Name (e.g., Inventory Module)" style="width: 100%; padding: 14px; font-size: 1.1rem; margin-bottom: 25px; border: 1px solid #dfe1e6; border-radius: 8px; font-weight: 600;">
                 <input type="hidden" id="edit-suite-id">
                 
-                <div id="editor-items-list" style="margin-bottom: 20px;">
-                    </div>
+                <div id="editor-items-list" style="margin-bottom: 25px;"></div>
                 
-                <div style="display: flex; justify-content: space-between; border-top: 1px solid #dfe1e6; padding-top: 20px;">
-                    <button class="btn-outline" onclick="addLine()">+ Add Step</button>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-primary" onclick="saveSuite()">Save Suite</button>
-                        <button class="btn-outline" onclick="document.getElementById('suite-editor').style.display='none'">Cancel</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #dfe1e6; padding-top: 25px;">
+                    <button class="status-btn" onclick="addLine()" style="background: #f4f5f7;">+ Add Step</button>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn-primary" onclick="saveSuite()">Save Designer</button>
+                        <button class="status-btn" onclick="document.getElementById('suite-editor').style.display='none'">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -79,11 +84,11 @@
         <div id="view-settings" class="view">
             <h2>Global Settings</h2>
             <div class="card">
-                <h3>Global Backup</h3>
-                <p style="color: #6b778c; margin-bottom: 15px;">Download or restore your entire database (all suites and all history).</p>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn-primary" onclick="exportData()">Export Everything</button>
-                    <button class="btn-outline" onclick="document.getElementById('import-global-file').click()">Restore Everything</button>
+                <h3>Full System Backup</h3>
+                <p style="color: #6b778c; margin: 10px 0 20px 0; font-size: 14px;">Backup your entire environment to a single JSON file.</p>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-primary" onclick="exportData()">Export Database</button>
+                    <button class="status-btn" onclick="document.getElementById('import-global-file').click()">Restore Database</button>
                 </div>
                 <input type="file" id="import-global-file" accept=".json" style="display: none;" onchange="importData(event)">
             </div>
